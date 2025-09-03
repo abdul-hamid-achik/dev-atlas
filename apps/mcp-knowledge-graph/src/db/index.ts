@@ -62,11 +62,55 @@ export class KnowledgeGraphDB {
     }
     console.error(`[KnowledgeGraph] Database path: ${targetPath}`);
 
-    this.sqlite = new Database(targetPath);
+    // Initialize SQLite with proper settings for concurrent access
+    this.sqlite = new Database(targetPath, {
+      // Enable WAL mode for better concurrent read/write performance
+      fileMustExist: false,
+      timeout: 30000, // 30 second timeout for database operations
+      verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
+    });
+
+    // Configure SQLite for better concurrency
+    this.sqlite.pragma('journal_mode = WAL'); // Enable Write-Ahead Logging
+    this.sqlite.pragma('synchronous = NORMAL'); // Balance between safety and performance
+    this.sqlite.pragma('cache_size = 1000'); // Increase cache size
+    this.sqlite.pragma('temp_store = memory'); // Store temporary data in memory
+    this.sqlite.pragma('mmap_size = 268435456'); // Enable memory-mapped I/O (256MB)
+
+    // Set a busy timeout to handle concurrent access
+    this.sqlite.pragma('busy_timeout = 30000'); // 30 second busy timeout
+
     this.db = drizzle(this.sqlite);
-    this.initializeTables();
+
+    // Initialize tables with retry logic
+    this.initializeTablesWithRetry();
 
     console.error(`[KnowledgeGraph] Database initialized successfully`);
+  }
+
+  private initializeTablesWithRetry(maxRetries: number = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.initializeTables();
+        return; // Success, exit retry loop
+      } catch (error) {
+        console.error(`[KnowledgeGraph] Database initialization attempt ${attempt} failed:`, error);
+
+        if (attempt === maxRetries) {
+          throw new Error(`Failed to initialize database after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        // Wait before retrying (synchronous sleep)
+        const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+        console.error(`[KnowledgeGraph] Retrying database initialization in ${delay}ms...`);
+
+        // Use a synchronous sleep approach
+        const start = Date.now();
+        while (Date.now() - start < delay) {
+          // Busy wait - not ideal but necessary for synchronous constructor
+        }
+      }
+    }
   }
 
   private initializeTables() {
@@ -117,12 +161,16 @@ export class KnowledgeGraphDB {
       updatedAt: new Date(),
     };
 
-    await this.db.insert(nodes).values({
-      id: node.id,
-      type: node.type,
-      label: node.label,
-      properties: JSON.stringify(node.properties || {}),
-    });
+    // Use retry wrapper for database write operation
+    await this.executeWithRetry(
+      () => this.db.insert(nodes).values({
+        id: node.id,
+        type: node.type,
+        label: node.label,
+        properties: JSON.stringify(node.properties || {}),
+      }),
+      'createNode'
+    );
 
     return node;
   }
@@ -186,14 +234,18 @@ export class KnowledgeGraphDB {
       updatedAt: new Date(),
     };
 
-    await this.db.insert(edges).values({
-      id: edge.id,
-      sourceId: edge.sourceId,
-      targetId: edge.targetId,
-      type: edge.type,
-      properties: JSON.stringify(edge.properties || {}),
-      weight: edge.weight,
-    });
+    // Use retry wrapper for database write operation
+    await this.executeWithRetry(
+      () => this.db.insert(edges).values({
+        id: edge.id,
+        sourceId: edge.sourceId,
+        targetId: edge.targetId,
+        type: edge.type,
+        properties: JSON.stringify(edge.properties || {}),
+        weight: edge.weight,
+      }),
+      'createEdge'
+    );
 
     return edge;
   }
@@ -1713,10 +1765,58 @@ export class KnowledgeGraphDB {
     return 'Consider using a consistent naming convention';
   }
 
+  // Database operation wrapper with retry logic for write operations
+  private executeWithRetry<T>(operation: () => T, operationName: string, maxRetries: number = 3): T {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return operation();
+      } catch (error: any) {
+        const errorMessage = error?.message || String(error);
+
+        // Check if it's a database busy/locked error
+        if (errorMessage.includes('database is locked') ||
+          errorMessage.includes('readonly database') ||
+          errorMessage.includes('SQLITE_BUSY')) {
+
+          console.error(`[KnowledgeGraph] ${operationName} attempt ${attempt} failed (database busy):`, errorMessage);
+
+          if (attempt === maxRetries) {
+            throw new Error(`${operationName} failed after ${maxRetries} attempts due to database lock: ${errorMessage}`);
+          }
+
+          // Wait before retrying with exponential backoff
+          const delay = Math.pow(2, attempt) * 500; // Start with 1s, then 2s, then 4s
+          console.error(`[KnowledgeGraph] Retrying ${operationName} in ${delay}ms...`);
+
+          const start = Date.now();
+          while (Date.now() - start < delay) {
+            // Synchronous wait
+          }
+        } else {
+          // For non-lock errors, don't retry
+          throw error;
+        }
+      }
+    }
+
+    // This should never be reached, but TypeScript requires it
+    throw new Error(`Unexpected error in executeWithRetry for ${operationName}`);
+  }
+
   close() {
-    // Clean up any active monitors
-    this.changeMonitors.clear();
-    this.lastSyncTimes.clear();
-    this.sqlite.close();
+    try {
+      // Clean up any active monitors
+      this.changeMonitors.clear();
+      this.lastSyncTimes.clear();
+
+      // Close the database connection gracefully
+      if (this.sqlite) {
+        console.error('[KnowledgeGraph] Closing database connection...');
+        this.sqlite.close();
+        console.error('[KnowledgeGraph] Database connection closed successfully');
+      }
+    } catch (error) {
+      console.error('[KnowledgeGraph] Error closing database:', error);
+    }
   }
 }
