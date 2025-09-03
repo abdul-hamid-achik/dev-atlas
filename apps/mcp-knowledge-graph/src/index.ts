@@ -5,12 +5,12 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { KnowledgeGraphDB } from './db/index.js';
 import {
+  type CreateEdge,
   CreateEdgeSchema,
+  type CreateNode,
   CreateNodeSchema,
   QueryEdgesSchema,
   QueryNodesSchema,
-  type CreateNode,
-  type CreateEdge,
 } from './types/schema.js';
 
 class KnowledgeGraphMCPServer {
@@ -621,7 +621,7 @@ class KnowledgeGraphMCPServer {
             };
             const updated = await this.db.updateNode(id, {
               label,
-              properties: properties as Record<string, unknown> | undefined
+              properties: properties as Record<string, unknown> | undefined,
             });
             if (!updated) {
               return {
@@ -649,7 +649,7 @@ class KnowledgeGraphMCPServer {
             const updated = await this.db.updateEdge(id, {
               type,
               properties: properties as Record<string, unknown> | undefined,
-              weight
+              weight,
             });
             if (!updated) {
               return {
