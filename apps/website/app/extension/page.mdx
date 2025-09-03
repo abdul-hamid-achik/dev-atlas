@@ -1,0 +1,164 @@
+# VS Code Extension
+
+The Dev Atlas VS Code extension provides a seamless interface for interacting with your knowledge graph directly from your editor.
+
+## Features
+
+### 🎨 Visual Interface
+- Interactive knowledge graph view
+- Node and edge creation tools
+- Real-time graph visualization
+- Drag-and-drop functionality
+
+### ⚡ Quick Actions
+- Command palette integration
+- Right-click context menus
+- Keyboard shortcuts
+- Smart suggestions
+
+### 🔍 Search & Navigate
+- Full-text search across the graph
+- Navigate relationships visually
+- Filter by node types
+- Quick jump to related concepts
+
+### 🔗 Editor Integration
+- Link code to knowledge graph nodes
+- Automatic relationship detection
+- Context-aware suggestions
+- Inline documentation
+
+## Installation
+
+### From VSIX Package
+
+1. Download the latest `.vsix` file from releases
+2. Open VS Code
+3. Go to Extensions (Ctrl+Shift+X)
+4. Click the "..." menu → "Install from VSIX..."
+5. Select the downloaded file
+
+### From Source
+
+```bash
+# Clone and build
+git clone https://github.com/abdul-hamid-achik/dev-atlas.git
+cd dev-atlas
+npm install
+npm run build --workspace=@dev-atlas/vscode-extension
+
+# Package the extension
+cd apps/vscode-extension
+npm run package
+```
+
+## Commands
+
+The extension provides several commands accessible via Ctrl+Shift+P:
+
+- `Dev Atlas: Open Knowledge Graph` - Open the main graph view
+- `Dev Atlas: Create Node` - Create a new knowledge node
+- `Dev Atlas: Create Edge` - Link two nodes together
+- `Dev Atlas: Search Graph` - Search across all nodes
+- `Dev Atlas: Export Graph` - Export graph data
+
+## Views
+
+### Knowledge Graph Explorer
+Located in the Explorer panel, this view shows:
+- **All Nodes**: Hierarchical list of all knowledge nodes
+- **Recent**: Recently accessed nodes
+- **Favorites**: Starred nodes for quick access
+- **Search**: Live search with results
+
+### Graph Visualizer
+The main graph view provides:
+- **Interactive Canvas**: Drag and zoom functionality
+- **Node Details**: Click nodes to see properties
+- **Relationship Lines**: Visual connections between concepts
+- **Filtering**: Show/hide different node types
+
+## Configuration
+
+Customize the extension through VS Code settings:
+
+```json
+{
+  "devAtlas.server.url": "http://localhost:3000",
+  "devAtlas.graph.autoLayout": true,
+  "devAtlas.graph.theme": "dark",
+  "devAtlas.search.fuzzy": true,
+  "devAtlas.notifications.enabled": true
+}
+```
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+G` | Open Knowledge Graph |
+| `Ctrl+K, N` | Create New Node |
+| `Ctrl+K, E` | Create New Edge |
+| `Ctrl+K, S` | Search Graph |
+| `F2` | Rename Selected Node |
+| `Delete` | Delete Selected Item |
+
+## Development
+
+To contribute to the extension:
+
+```bash
+cd apps/vscode-extension
+
+# Install dependencies
+npm install
+
+# Start development
+npm run dev
+
+# Run tests
+npm test
+
+# Package for distribution
+npm run package
+```
+
+## Extension API
+
+The extension exposes an API for other extensions:
+
+```typescript
+import { extensions } from 'vscode';
+
+const devAtlas = extensions.getExtension('dev-atlas.vscode-extension');
+if (devAtlas) {
+  const api = devAtlas.exports;
+  
+  // Create a node programmatically
+  await api.createNode({
+    type: 'concept',
+    label: 'New Concept',
+    properties: { category: 'architecture' }
+  });
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Extension not loading**
+- Check that the MCP server is running
+- Verify server URL in settings
+- Check VS Code developer console for errors
+
+**Graph not displaying**  
+- Ensure WebView permissions are enabled
+- Try reloading the window (Ctrl+Shift+P → "Reload Window")
+
+**Connection errors**
+- Verify MCP server is accessible
+- Check firewall settings
+- Confirm server port configuration
+
+For more help, check our [GitHub Issues](https://github.com/abdul-hamid-achik/dev-atlas/issues) or join the community discussion.

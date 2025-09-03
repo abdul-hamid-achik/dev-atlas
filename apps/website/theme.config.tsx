@@ -1,14 +1,13 @@
 import React from 'react'
-import { DocsThemeConfig } from 'nextra-theme-docs'
 
-const config: DocsThemeConfig = {
+const config = {
   logo: <span>🗺️ Dev Atlas</span>,
   project: {
     link: 'https://github.com/abdul-hamid-achik/dev-atlas',
   },
   docsRepositoryBase: 'https://github.com/abdul-hamid-achik/dev-atlas/tree/main/apps/website',
   footer: {
-    content: 'Dev Atlas © 2024',
+    text: 'Dev Atlas © 2024',
   },
   head: (
     <>

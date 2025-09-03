@@ -1,0 +1,118 @@
+# MCP Knowledge Graph Server
+
+The Model Context Protocol (MCP) server is the core component of Dev Atlas that manages your knowledge graph data using SQLite with Drizzle ORM.
+
+## Overview
+
+The MCP server provides:
+- **CRUD Operations** for nodes and edges
+- **Advanced Search** capabilities
+- **Graph Traversal** algorithms
+- **SQLite Storage** with optimized queries
+- **Type-Safe Operations** with Zod validation
+
+## Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   VS Code       │    │   MCP Server     │    │   SQLite DB     │
+│   Extension     │◄──►│   (TypeScript)   │◄──►│   Knowledge     │
+│                 │    │                  │    │   Graph         │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+## Features
+
+### Node Management
+- Create, read, update, and delete nodes
+- Support for custom properties and metadata
+- Type validation with Zod schemas
+
+### Edge Management
+- Define relationships between nodes
+- Weighted connections
+- Directional graph support
+
+### Search & Query
+- Full-text search across nodes
+- Property-based filtering
+- Graph traversal queries
+
+### Performance
+- Optimized SQLite queries
+- Indexed search operations
+- Efficient graph algorithms
+
+## API Reference
+
+The server exposes several tools through the MCP protocol:
+
+### Node Operations
+
+- `create_node`: Create a new node
+- `get_node`: Retrieve a node by ID
+- `query_nodes`: Search and filter nodes
+- `update_node`: Modify existing nodes
+- `delete_node`: Remove nodes
+
+### Edge Operations
+
+- `create_edge`: Create connections between nodes
+- `get_edge`: Retrieve edge information
+- `query_edges`: Find edges by criteria
+- `get_neighbors`: Get connected nodes
+
+### Graph Operations
+
+- `traverse_graph`: Navigate through connections
+- `shortest_path`: Find optimal routes
+- `clustering`: Identify node groups
+
+## Database Schema
+
+The knowledge graph uses a simple but powerful schema:
+
+```sql
+-- Nodes table
+CREATE TABLE nodes (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  label TEXT NOT NULL,
+  properties TEXT, -- JSON
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+-- Edges table  
+CREATE TABLE edges (
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  target_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  properties TEXT, -- JSON
+  weight REAL,
+  created_at INTEGER,
+  updated_at INTEGER,
+  FOREIGN KEY (source_id) REFERENCES nodes (id),
+  FOREIGN KEY (target_id) REFERENCES nodes (id)
+);
+```
+
+## Configuration
+
+The server can be configured through environment variables:
+
+- `DB_PATH`: SQLite database file path
+- `PORT`: Server port (default: 3000)
+- `LOG_LEVEL`: Logging verbosity
+
+## Development
+
+To contribute to the MCP server:
+
+```bash
+cd apps/mcp-knowledge-graph
+npm run dev    # Start development server
+npm run test   # Run tests
+npm run build  # Build for production
+```
