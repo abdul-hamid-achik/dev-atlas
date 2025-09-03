@@ -1,5 +1,5 @@
 {
-  "name": "dev-atlas-knowledge-graph",
+  "name": "@dev-atlas/mcp-knowledge-graph",
   "version": "0.1.0",
   "description": "MCP server for managing knowledge graph in SQLite",
   "type": "module",
@@ -34,8 +34,7 @@
     "@modelcontextprotocol/sdk": "^0.4.0",
     "better-sqlite3": "^9.2.2",
     "drizzle-orm": "^0.28.6",
-    "next": "15.5.2",
-    "vsce": "^2.15.0",
+    "uuid": "^9.0.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -49,7 +48,6 @@
     "semantic-release": "^22.0.12",
     "tsx": "^4.6.0",
     "typescript": "^5.2.2",
-    "uuid": "^9.0.1",
     "vitest": "^3.2.4"
   }
 }

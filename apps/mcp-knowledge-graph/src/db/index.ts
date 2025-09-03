@@ -157,7 +157,7 @@ export class KnowledgeGraphDB {
       targetId: edge.targetId,
       type: edge.type,
       properties: edge.properties ? JSON.parse(edge.properties as string) : {},
-      weight: edge.weight || undefined,
+      weight: edge.weight ?? undefined,
       createdAt: edge.createdAt || undefined,
       updatedAt: edge.updatedAt || undefined,
     };
@@ -193,7 +193,7 @@ export class KnowledgeGraphDB {
       targetId: edge.targetId,
       type: edge.type,
       properties: edge.properties ? JSON.parse(edge.properties as string) : {},
-      weight: edge.weight || undefined,
+      weight: edge.weight ?? undefined,
       createdAt: edge.createdAt || undefined,
       updatedAt: edge.updatedAt || undefined,
     }));
