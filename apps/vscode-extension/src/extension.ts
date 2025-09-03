@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
+import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { createNodeCommand } from './commands/createNode';
 import { createEdgeCommand } from './commands/createEdge';
 
@@ -14,7 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
   const openKnowledgeGraphCommand = vscode.commands.registerCommand(
     'dev-atlas.openKnowledgeGraph',
     () => {
-      vscode.window.showInformationMessage('Knowledge Graph opened!');
+      GraphVisualizerPanel.createOrShow(context.extensionUri, provider);
     }
   );
 

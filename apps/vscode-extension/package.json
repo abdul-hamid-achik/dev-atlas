@@ -41,6 +41,13 @@
           "name": "Knowledge Graph",
           "when": "true"
         }
+      ],
+      "dev-atlas": [
+        {
+          "id": "dev-atlas-knowledge-graph",
+          "name": "Knowledge Graph",
+          "when": "true"
+        }
       ]
     },
     "viewsContainers": {
@@ -49,6 +56,15 @@
           "id": "dev-atlas",
           "title": "Dev Atlas",
           "icon": "$(graph)"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "dev-atlas.openKnowledgeGraph",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation"
         }
       ]
     }

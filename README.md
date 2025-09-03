@@ -109,7 +109,7 @@ npm run dev
 ```bash
 cd apps/website
 npm run dev
-# El sitio estará disponible en http://localhost:3001
+# El sitio estará disponible en http://localhost:3000
 ```
 
 ## Próximos Pasos

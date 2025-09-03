@@ -46,16 +46,31 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
   }
 
   private loadSampleData() {
-    // Sample data for demonstration
+    // Enhanced sample data for demonstration
     this.nodes = [
-      new KnowledgeGraphNode('React', 'Technology', 'node-1', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('React', 'Framework', 'node-1', vscode.TreeItemCollapsibleState.Collapsed),
       new KnowledgeGraphNode('TypeScript', 'Language', 'node-2', vscode.TreeItemCollapsibleState.Collapsed),
       new KnowledgeGraphNode('Node.js', 'Runtime', 'node-3', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('VS Code', 'Tool', 'node-4', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('D3.js', 'Library', 'node-5', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('Webpack', 'Tool', 'node-6', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('JavaScript', 'Language', 'node-7', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('Graph Visualization', 'Concept', 'node-8', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('MCP Protocol', 'Technology', 'node-9', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode('SQLite', 'Technology', 'node-10', vscode.TreeItemCollapsibleState.Collapsed),
     ];
 
     this.edges = [
       new KnowledgeGraphEdge('Built with', 'uses', 'edge-1', 'node-1', 'node-2'),
       new KnowledgeGraphEdge('Runs on', 'runs_on', 'edge-2', 'node-1', 'node-3'),
+      new KnowledgeGraphEdge('Developed in', 'uses', 'edge-3', 'node-1', 'node-4'),
+      new KnowledgeGraphEdge('Visualizes with', 'uses', 'edge-4', 'node-8', 'node-5'),
+      new KnowledgeGraphEdge('Bundles with', 'uses', 'edge-5', 'node-1', 'node-6'),
+      new KnowledgeGraphEdge('Compiles to', 'compiles_to', 'edge-6', 'node-2', 'node-7'),
+      new KnowledgeGraphEdge('Implements', 'implements', 'edge-7', 'node-8', 'node-1'),
+      new KnowledgeGraphEdge('Communicates via', 'uses', 'edge-8', 'node-4', 'node-9'),
+      new KnowledgeGraphEdge('Stores data in', 'uses', 'edge-9', 'node-9', 'node-10'),
+      new KnowledgeGraphEdge('Extension for', 'extends', 'edge-10', 'node-9', 'node-4'),
     ];
   }
 
@@ -101,5 +116,14 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
     const newEdge = new KnowledgeGraphEdge(label, type, id, sourceId, targetId);
     this.edges.push(newEdge);
     this.refresh();
+  }
+
+  // Getter methods for external access to data
+  getNodes(): KnowledgeGraphNode[] {
+    return [...this.nodes];
+  }
+
+  getEdges(): KnowledgeGraphEdge[] {
+    return [...this.edges];
   }
 }
