@@ -1,5 +1,5 @@
 {
-    "buildCommand": "npm run build --filter=@dev-atlas/website",
+    "buildCommand": "npm run build --filter=dev-atlas-website",
     "outputDirectory": "apps/website/.next",
     "installCommand": "npm install",
     "ignoreCommand": "git diff HEAD^ HEAD --quiet . ':(exclude)apps/website'",

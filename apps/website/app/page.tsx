@@ -152,7 +152,7 @@ export default function HomePage() {
                   step: '01',
                   icon: <Package className="h-8 w-8 text-blue-600" />,
                   title: 'Install MCP Server',
-                  code: 'npm install -g @dev-atlas/mcp-knowledge-graph',
+                  code: 'npm install -g dev-atlas-knowledge-graph',
                   description: 'Install the knowledge graph MCP server globally via npm',
                 },
                 {
@@ -330,7 +330,7 @@ export default function HomePage() {
   "mcpServers": {
     "knowledge-graph": {
       "command": "npx",
-      "args": ["@dev-atlas/mcp-knowledge-graph"],
+      "args": ["dev-atlas-knowledge-graph"],
       "env": {
         "GRAPH_DB_PATH": "./knowledge-graph.db"
       }

@@ -78,8 +78,8 @@ npm run format       # Formatea el código con Biome
 npm run clean        # Limpia todos los builds
 
 # Workspace específico
-npm run dev --workspace=@dev-atlas/mcp-knowledge-graph
-npm run build --workspace=@dev-atlas/mcp-knowledge-graph
+npm run dev --workspace=dev-atlas-knowledge-graph
+npm run build --workspace=dev-atlas-knowledge-graph
 ```
 
 ## Desarrollo

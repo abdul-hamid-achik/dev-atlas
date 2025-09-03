@@ -1,5 +1,5 @@
 {
-  "name": "@dev-atlas/website",
+  "name": "dev-atlas-website",
   "version": "0.1.0",
   "private": true,
   "description": "Dev Atlas documentation and landing page",
@@ -38,6 +38,8 @@
     "@types/node": "^20.5.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
     "tailwindcss": "^3.3.3",
     "typescript": "^5.2.2"
   }

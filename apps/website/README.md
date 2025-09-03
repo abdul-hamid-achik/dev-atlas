@@ -172,7 +172,7 @@ npm run start
 
 ## 📖 Package Information
 
-- **Package Name**: `@dev-atlas/website`
+- **Package Name**: `dev-atlas-website`
 - **Version**: 0.1.0
 - **Node.js**: >= 18.0.0
 - **Next.js**: 15.0.3
