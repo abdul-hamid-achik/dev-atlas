@@ -1,0 +1,322 @@
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { nodes, edges } from './schema';
+import { eq, and, like, desc } from 'drizzle-orm';
+import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as vscode from 'vscode';
+import { log } from '../extension';
+import type { Node, Edge, CreateNode, CreateEdge, QueryNodes, QueryEdges } from './schema';
+
+function findProjectRoot(startPath: string = process.cwd()): string {
+    let currentPath = path.resolve(startPath);
+
+    while (currentPath !== path.dirname(currentPath)) {
+        // Check for project root indicators
+        if (fs.existsSync(path.join(currentPath, 'package.json'))) {
+            const packageJson = path.join(currentPath, 'package.json');
+            try {
+                const content = fs.readFileSync(packageJson, 'utf8');
+                const pkg = JSON.parse(content);
+                // Look for indicators this is the main project root (not a nested package)
+                if (pkg.workspaces || pkg.name === 'dev-atlas' || fs.existsSync(path.join(currentPath, 'turbo.json'))) {
+                    return currentPath;
+                }
+            } catch (e) {
+                // Continue searching if we can't read package.json
+            }
+        }
+
+        currentPath = path.dirname(currentPath);
+    }
+
+    // Fallback to current working directory if no project root found
+    return process.cwd();
+}
+
+function findDatabasePath(): string {
+    // Check workspace folders first (VS Code specific)
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+        for (const folder of workspaceFolders) {
+            const dbPath = path.join(folder.uri.fsPath, 'knowledge-graph.db');
+            if (fs.existsSync(dbPath)) {
+                log(`Found database in workspace folder: ${dbPath}`);
+                return dbPath;
+            }
+        }
+    }
+
+    // Check for explicit directory from environment variable
+    const envDir = process.env.KNOWLEDGE_GRAPH_DIR;
+    if (envDir) {
+        const envPath = path.resolve(envDir, 'knowledge-graph.db');
+        if (fs.existsSync(envPath)) {
+            log(`Found database via KNOWLEDGE_GRAPH_DIR: ${envPath}`);
+            return envPath;
+        }
+    }
+
+    // Find project root and check there
+    const projectRoot = findProjectRoot();
+    const rootDbPath = path.join(projectRoot, 'knowledge-graph.db');
+    if (fs.existsSync(rootDbPath)) {
+        log(`Found database at project root: ${rootDbPath}`);
+        return rootDbPath;
+    }
+
+    // Check MCP app location
+    const mcpDbPath = path.join(projectRoot, 'apps', 'mcp-knowledge-graph', 'knowledge-graph.db');
+    if (fs.existsSync(mcpDbPath)) {
+        log(`Found database in MCP app: ${mcpDbPath}`);
+        return mcpDbPath;
+    }
+
+    // Default fallback - create in project root
+    log(`No existing database found, will create at: ${rootDbPath}`, 'warn');
+    return rootDbPath;
+}
+
+export class KnowledgeGraphDB {
+    private db: ReturnType<typeof drizzle>;
+    private sqlite: Database.Database;
+    private dbPath: string;
+
+    constructor(dbPath?: string) {
+        try {
+            this.dbPath = dbPath || findDatabasePath();
+
+            log(`Initializing database at: ${this.dbPath}`);
+            log(`Current working directory: ${process.cwd()}`);
+
+            // Create directory if it doesn't exist
+            const dbDir = path.dirname(this.dbPath);
+            if (!fs.existsSync(dbDir)) {
+                fs.mkdirSync(dbDir, { recursive: true });
+                log(`Created database directory: ${dbDir}`);
+            }
+
+            this.sqlite = new Database(this.dbPath);
+            this.db = drizzle(this.sqlite);
+            this.initializeTables();
+
+            log(`Database initialized successfully at: ${this.dbPath}`);
+        } catch (error) {
+            log(`Failed to initialize database: ${error}`, 'error');
+            throw error;
+        }
+    }
+
+    private initializeTables() {
+        try {
+            // Create tables if they don't exist
+            this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS nodes (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          label TEXT NOT NULL,
+          properties TEXT,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+        );
+      `);
+
+            this.sqlite.exec(`
+        CREATE TABLE IF NOT EXISTS edges (
+          id TEXT PRIMARY KEY,
+          source_id TEXT NOT NULL,
+          target_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          properties TEXT,
+          weight REAL,
+          created_at INTEGER DEFAULT (strftime('%s', 'now')),
+          updated_at INTEGER DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (source_id) REFERENCES nodes (id),
+          FOREIGN KEY (target_id) REFERENCES nodes (id)
+        );
+      `);
+
+            // Create indexes for better performance
+            this.sqlite.exec(`
+        CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes (type);
+        CREATE INDEX IF NOT EXISTS idx_nodes_label ON nodes (label);
+        CREATE INDEX IF NOT EXISTS idx_edges_source ON edges (source_id);
+        CREATE INDEX IF NOT EXISTS idx_edges_target ON edges (target_id);
+        CREATE INDEX IF NOT EXISTS idx_edges_type ON edges (type);
+      `);
+
+            log('Database tables and indexes created successfully');
+        } catch (error) {
+            log(`Failed to initialize tables: ${error}`, 'error');
+            throw error;
+        }
+    }
+
+    getDatabasePath(): string {
+        return this.dbPath;
+    }
+
+    // Node operations
+    async createNode(data: CreateNode): Promise<Node> {
+        try {
+            const id = uuidv4();
+            const node = {
+                id,
+                ...data,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            await this.db.insert(nodes).values({
+                id: node.id,
+                type: node.type,
+                label: node.label,
+                properties: JSON.stringify(node.properties || {}),
+            });
+
+            log(`Created node: ${node.label} (${node.type})`);
+            return node;
+        } catch (error) {
+            log(`Failed to create node: ${error}`, 'error');
+            throw error;
+        }
+    }
+
+    async getNode(id: string): Promise<Node | null> {
+        try {
+            const result = await this.db.select().from(nodes).where(eq(nodes.id, id)).limit(1);
+
+            if (result.length === 0) return null;
+
+            const node = result[0];
+            return {
+                id: node.id,
+                type: node.type,
+                label: node.label,
+                properties: node.properties ? JSON.parse(node.properties as string) : {},
+                createdAt: node.createdAt ? new Date(node.createdAt * 1000) : undefined,
+                updatedAt: node.updatedAt ? new Date(node.updatedAt * 1000) : undefined,
+            };
+        } catch (error) {
+            log(`Failed to get node ${id}: ${error}`, 'error');
+            return null;
+        }
+    }
+
+    async queryNodes(query: QueryNodes = {}): Promise<Node[]> {
+        try {
+            let dbQuery = this.db.select().from(nodes);
+
+            if (query.type) {
+                dbQuery = dbQuery.where(eq(nodes.type, query.type));
+            }
+
+            if (query.label) {
+                dbQuery = dbQuery.where(like(nodes.label, `%${query.label}%`));
+            }
+
+            dbQuery = dbQuery.orderBy(desc(nodes.createdAt));
+
+            if (query.limit) {
+                dbQuery = dbQuery.limit(query.limit);
+            }
+
+            if (query.offset) {
+                dbQuery = dbQuery.offset(query.offset);
+            }
+
+            const results = await dbQuery;
+
+            return results.map(node => ({
+                id: node.id,
+                type: node.type,
+                label: node.label,
+                properties: node.properties ? JSON.parse(node.properties as string) : {},
+                createdAt: node.createdAt ? new Date(node.createdAt * 1000) : undefined,
+                updatedAt: node.updatedAt ? new Date(node.updatedAt * 1000) : undefined,
+            }));
+        } catch (error) {
+            log(`Failed to query nodes: ${error}`, 'error');
+            return [];
+        }
+    }
+
+    // Edge operations
+    async createEdge(data: CreateEdge): Promise<Edge> {
+        try {
+            const id = uuidv4();
+            const edge = {
+                id,
+                ...data,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            await this.db.insert(edges).values({
+                id: edge.id,
+                sourceId: edge.sourceId,
+                targetId: edge.targetId,
+                type: edge.type,
+                properties: JSON.stringify(edge.properties || {}),
+                weight: edge.weight,
+            });
+
+            log(`Created edge: ${edge.sourceId} -> ${edge.targetId} (${edge.type})`);
+            return edge;
+        } catch (error) {
+            log(`Failed to create edge: ${error}`, 'error');
+            throw error;
+        }
+    }
+
+    async queryEdges(query: QueryEdges = {}): Promise<Edge[]> {
+        try {
+            let dbQuery = this.db.select().from(edges);
+
+            const conditions = [];
+            if (query.sourceId) conditions.push(eq(edges.sourceId, query.sourceId));
+            if (query.targetId) conditions.push(eq(edges.targetId, query.targetId));
+            if (query.type) conditions.push(eq(edges.type, query.type));
+
+            if (conditions.length > 0) {
+                dbQuery = dbQuery.where(and(...conditions));
+            }
+
+            dbQuery = dbQuery.orderBy(desc(edges.createdAt));
+
+            if (query.limit) {
+                dbQuery = dbQuery.limit(query.limit);
+            }
+
+            if (query.offset) {
+                dbQuery = dbQuery.offset(query.offset);
+            }
+
+            const results = await dbQuery;
+
+            return results.map(edge => ({
+                id: edge.id,
+                sourceId: edge.sourceId,
+                targetId: edge.targetId,
+                type: edge.type,
+                properties: edge.properties ? JSON.parse(edge.properties as string) : {},
+                weight: edge.weight ?? undefined,
+                createdAt: edge.createdAt ? new Date(edge.createdAt * 1000) : undefined,
+                updatedAt: edge.updatedAt ? new Date(edge.updatedAt * 1000) : undefined,
+            }));
+        } catch (error) {
+            log(`Failed to query edges: ${error}`, 'error');
+            return [];
+        }
+    }
+
+    close() {
+        try {
+            this.sqlite.close();
+            log('Database connection closed');
+        } catch (error) {
+            log(`Failed to close database: ${error}`, 'error');
+        }
+    }
+}

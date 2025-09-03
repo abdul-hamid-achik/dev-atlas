@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { log } from '../extension';
 
 const CreateEdgeSchema = z.object({
   sourceId: z.string().min(1, 'Source ID is required'),
@@ -10,37 +11,64 @@ const CreateEdgeSchema = z.object({
 });
 
 export async function createEdgeCommand() {
+  log('Create edge command started');
   try {
-    // Show input box for source node ID
-    const sourceId = await vscode.window.showInputBox({
-      prompt: 'Enter source node ID',
-      placeHolder: 'e.g., node-1, person-123',
-      validateInput: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Source ID is required';
-        }
-        return null;
-      },
+    // Get available nodes first
+    const knowledgeGraphProvider = (global as any).devAtlasKnowledgeGraphProvider;
+    if (!knowledgeGraphProvider) {
+      vscode.window.showErrorMessage('Knowledge graph provider not available');
+      log('Knowledge graph provider not found', 'error');
+      return;
+    }
+
+    const nodes = knowledgeGraphProvider.getNodes();
+    if (nodes.length < 2) {
+      vscode.window.showErrorMessage('At least 2 nodes are required to create an edge. Create some nodes first.');
+      log('Not enough nodes to create edge', 'warn');
+      return;
+    }
+
+    // Show quick pick for source node
+    const sourceNodeItems = nodes.map(node => ({
+      label: node.label,
+      description: `${node.type} - ${node.id}`,
+      detail: node.id,
+      node: node
+    }));
+
+    const selectedSourceNode = await vscode.window.showQuickPick(sourceNodeItems, {
+      placeHolder: 'Select source node'
     });
+
+    if (!selectedSourceNode) {
+      return;
+    }
+
+    const sourceId = selectedSourceNode.node.id;
 
     if (!sourceId) {
       return;
     }
 
-    // Show input box for target node ID
-    const targetId = await vscode.window.showInputBox({
-      prompt: 'Enter target node ID',
-      placeHolder: 'e.g., node-2, concept-456',
-      validateInput: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'Target ID is required';
-        }
-        if (value === sourceId) {
-          return 'Target ID must be different from source ID';
-        }
-        return null;
-      },
+    // Show quick pick for target node (excluding source node)
+    const targetNodeItems = nodes
+      .filter(node => node.id !== sourceId)
+      .map(node => ({
+        label: node.label,
+        description: `${node.type} - ${node.id}`,
+        detail: node.id,
+        node: node
+      }));
+
+    const selectedTargetNode = await vscode.window.showQuickPick(targetNodeItems, {
+      placeHolder: 'Select target node'
     });
+
+    if (!selectedTargetNode) {
+      return;
+    }
+
+    const targetId = selectedTargetNode.node.id;
 
     if (!targetId) {
       return;
@@ -119,27 +147,18 @@ export async function createEdgeCommand() {
       weight,
     });
 
-    // Generate a unique ID
-    const id = `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    // Here you would typically call your MCP server or database
-    // For now, we'll just show a success message
-    vscode.window.showInformationMessage(
-      `Edge created successfully!\nID: ${id}\nType: ${edgeData.type}\nFrom: ${edgeData.sourceId} -> To: ${edgeData.targetId}`
-    );
-
-    // Log the edge data for debugging
-    console.log('Created edge:', { id, ...edgeData });
-
-    // TODO: Integrate with MCP server to actually create the edge
-    // await mcpClient.callTool('create_edge', edgeData);
+    // Create the edge using the provider
+    await knowledgeGraphProvider.addEdge(edgeData.sourceId, edgeData.targetId, edgeData.type);
+    log(`Edge created: ${edgeData.sourceId} -> ${edgeData.targetId} (${edgeData.type})`);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       vscode.window.showErrorMessage(`Validation error: ${errorMessage}`);
+      log(`Validation error: ${errorMessage}`, 'error');
     } else {
       vscode.window.showErrorMessage(`Error creating edge: ${error}`);
+      log(`Error creating edge: ${error}`, 'error');
     }
   }
 }

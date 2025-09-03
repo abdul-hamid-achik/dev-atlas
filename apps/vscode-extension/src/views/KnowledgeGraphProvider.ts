@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import { KnowledgeGraphDB } from '../db/index';
+import { log } from '../extension';
+import type { Node, Edge } from '../db/schema';
 
 export class KnowledgeGraphNode extends vscode.TreeItem {
   constructor(
@@ -40,42 +43,162 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
 
   private nodes: KnowledgeGraphNode[] = [];
   private edges: KnowledgeGraphEdge[] = [];
+  private db: KnowledgeGraphDB | null = null;
 
   constructor() {
-    this.loadSampleData();
+    this.initializeDatabase();
   }
 
-  private loadSampleData() {
-    // Enhanced sample data for demonstration
+  private async initializeDatabase() {
+    try {
+      log('Initializing database connection...');
+      this.db = new KnowledgeGraphDB();
+      log(`Database connected at: ${this.db.getDatabasePath()}`);
+
+      // Load data from database
+      await this.loadDataFromDatabase();
+
+      // If no data exists, create some sample data
+      const nodeCount = this.nodes.length;
+      if (nodeCount === 0) {
+        log('No nodes found in database, creating sample data...');
+        await this.createSampleData();
+        await this.loadDataFromDatabase();
+      }
+
+      log(`Loaded ${this.nodes.length} nodes and ${this.edges.length} edges from database`);
+      this._onDidChangeTreeData.fire();
+
+    } catch (error) {
+      log(`Failed to initialize database: ${error}`, 'error');
+      vscode.window.showErrorMessage(`Dev Atlas: Failed to connect to database: ${error}`);
+      // Fall back to sample data if database fails
+      this.loadSampleDataFallback();
+    }
+  }
+
+  private async loadDataFromDatabase() {
+    if (!this.db) return;
+
+    try {
+      // Load nodes from database
+      const dbNodes = await this.db.queryNodes({ limit: 100 });
+      this.nodes = dbNodes.map(node =>
+        new KnowledgeGraphNode(
+          node.label,
+          node.type,
+          node.id,
+          vscode.TreeItemCollapsibleState.Collapsed
+        )
+      );
+
+      // Load edges from database
+      const dbEdges = await this.db.queryEdges({ limit: 500 });
+      this.edges = dbEdges.map(edge =>
+        new KnowledgeGraphEdge(
+          `${edge.type}`,
+          edge.type,
+          edge.id,
+          edge.sourceId,
+          edge.targetId
+        )
+      );
+
+      log(`Loaded ${this.nodes.length} nodes and ${this.edges.length} edges from database`);
+    } catch (error) {
+      log(`Failed to load data from database: ${error}`, 'error');
+      throw error;
+    }
+  }
+
+  private async createSampleData() {
+    if (!this.db) return;
+
+    try {
+      log('Creating sample nodes and edges...');
+
+      // Create sample nodes
+      const nodeIds: Record<string, string> = {};
+      const sampleNodes = [
+        { type: 'Framework', label: 'React' },
+        { type: 'Language', label: 'TypeScript' },
+        { type: 'Runtime', label: 'Node.js' },
+        { type: 'Tool', label: 'VS Code' },
+        { type: 'Library', label: 'D3.js' },
+        { type: 'Tool', label: 'Webpack' },
+        { type: 'Language', label: 'JavaScript' },
+        { type: 'Concept', label: 'Graph Visualization' },
+        { type: 'Technology', label: 'MCP Protocol' },
+        { type: 'Technology', label: 'SQLite' },
+      ];
+
+      for (const nodeData of sampleNodes) {
+        const node = await this.db.createNode(nodeData);
+        nodeIds[nodeData.label] = node.id;
+      }
+
+      // Create sample edges
+      const sampleEdges = [
+        { source: 'React', target: 'TypeScript', type: 'uses', label: 'Built with' },
+        { source: 'React', target: 'Node.js', type: 'runs_on', label: 'Runs on' },
+        { source: 'React', target: 'VS Code', type: 'uses', label: 'Developed in' },
+        { source: 'Graph Visualization', target: 'D3.js', type: 'uses', label: 'Visualizes with' },
+        { source: 'React', target: 'Webpack', type: 'uses', label: 'Bundles with' },
+        { source: 'TypeScript', target: 'JavaScript', type: 'compiles_to', label: 'Compiles to' },
+        { source: 'Graph Visualization', target: 'React', type: 'implements', label: 'Implements' },
+        { source: 'VS Code', target: 'MCP Protocol', type: 'uses', label: 'Communicates via' },
+        { source: 'MCP Protocol', target: 'SQLite', type: 'uses', label: 'Stores data in' },
+        { source: 'MCP Protocol', target: 'VS Code', type: 'extends', label: 'Extension for' },
+      ];
+
+      for (const edgeData of sampleEdges) {
+        if (nodeIds[edgeData.source] && nodeIds[edgeData.target]) {
+          await this.db.createEdge({
+            sourceId: nodeIds[edgeData.source],
+            targetId: nodeIds[edgeData.target],
+            type: edgeData.type,
+            properties: { label: edgeData.label }
+          });
+        }
+      }
+
+      log('Sample data created successfully');
+    } catch (error) {
+      log(`Failed to create sample data: ${error}`, 'error');
+      throw error;
+    }
+  }
+
+  private loadSampleDataFallback() {
+    log('Using fallback sample data', 'warn');
+    // Enhanced sample data for demonstration (fallback only)
     this.nodes = [
       new KnowledgeGraphNode('React', 'Framework', 'node-1', vscode.TreeItemCollapsibleState.Collapsed),
       new KnowledgeGraphNode('TypeScript', 'Language', 'node-2', vscode.TreeItemCollapsibleState.Collapsed),
       new KnowledgeGraphNode('Node.js', 'Runtime', 'node-3', vscode.TreeItemCollapsibleState.Collapsed),
       new KnowledgeGraphNode('VS Code', 'Tool', 'node-4', vscode.TreeItemCollapsibleState.Collapsed),
       new KnowledgeGraphNode('D3.js', 'Library', 'node-5', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('Webpack', 'Tool', 'node-6', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('JavaScript', 'Language', 'node-7', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('Graph Visualization', 'Concept', 'node-8', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('MCP Protocol', 'Technology', 'node-9', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('SQLite', 'Technology', 'node-10', vscode.TreeItemCollapsibleState.Collapsed),
     ];
 
     this.edges = [
       new KnowledgeGraphEdge('Built with', 'uses', 'edge-1', 'node-1', 'node-2'),
       new KnowledgeGraphEdge('Runs on', 'runs_on', 'edge-2', 'node-1', 'node-3'),
       new KnowledgeGraphEdge('Developed in', 'uses', 'edge-3', 'node-1', 'node-4'),
-      new KnowledgeGraphEdge('Visualizes with', 'uses', 'edge-4', 'node-8', 'node-5'),
-      new KnowledgeGraphEdge('Bundles with', 'uses', 'edge-5', 'node-1', 'node-6'),
-      new KnowledgeGraphEdge('Compiles to', 'compiles_to', 'edge-6', 'node-2', 'node-7'),
-      new KnowledgeGraphEdge('Implements', 'implements', 'edge-7', 'node-8', 'node-1'),
-      new KnowledgeGraphEdge('Communicates via', 'uses', 'edge-8', 'node-4', 'node-9'),
-      new KnowledgeGraphEdge('Stores data in', 'uses', 'edge-9', 'node-9', 'node-10'),
-      new KnowledgeGraphEdge('Extension for', 'extends', 'edge-10', 'node-9', 'node-4'),
     ];
   }
 
-  refresh(): void {
-    this._onDidChangeTreeData.fire();
+  async refresh(): Promise<void> {
+    log('Refreshing knowledge graph data...');
+    try {
+      if (this.db) {
+        await this.loadDataFromDatabase();
+        log('Data refreshed successfully');
+      }
+      this._onDidChangeTreeData.fire();
+    } catch (error) {
+      log(`Failed to refresh data: ${error}`, 'error');
+      vscode.window.showErrorMessage(`Dev Atlas: Failed to refresh data: ${error}`);
+    }
   }
 
   getTreeItem(element: KnowledgeGraphNode | KnowledgeGraphEdge): vscode.TreeItem {
@@ -100,22 +223,49 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
   }
 
   // Method to add a new node
-  addNode(label: string, type: string, id: string): void {
-    const newNode = new KnowledgeGraphNode(
-      label,
-      type,
-      id,
-      vscode.TreeItemCollapsibleState.Collapsed
-    );
-    this.nodes.push(newNode);
-    this.refresh();
+  async addNode(label: string, type: string): Promise<void> {
+    try {
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+
+      log(`Adding new node: ${label} (${type})`);
+      const node = await this.db.createNode({ label, type });
+
+      const newNode = new KnowledgeGraphNode(
+        node.label,
+        node.type,
+        node.id,
+        vscode.TreeItemCollapsibleState.Collapsed
+      );
+
+      this.nodes.push(newNode);
+      await this.refresh();
+      vscode.window.showInformationMessage(`Node "${label}" created successfully!`);
+    } catch (error) {
+      log(`Failed to add node: ${error}`, 'error');
+      vscode.window.showErrorMessage(`Failed to create node: ${error}`);
+    }
   }
 
   // Method to add a new edge
-  addEdge(label: string, type: string, id: string, sourceId: string, targetId: string): void {
-    const newEdge = new KnowledgeGraphEdge(label, type, id, sourceId, targetId);
-    this.edges.push(newEdge);
-    this.refresh();
+  async addEdge(sourceId: string, targetId: string, type: string): Promise<void> {
+    try {
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+
+      log(`Adding new edge: ${sourceId} -> ${targetId} (${type})`);
+      const edge = await this.db.createEdge({ sourceId, targetId, type });
+
+      const newEdge = new KnowledgeGraphEdge(type, edge.type, edge.id, edge.sourceId, edge.targetId);
+      this.edges.push(newEdge);
+      await this.refresh();
+      vscode.window.showInformationMessage(`Edge "${type}" created successfully!`);
+    } catch (error) {
+      log(`Failed to add edge: ${error}`, 'error');
+      vscode.window.showErrorMessage(`Failed to create edge: ${error}`);
+    }
   }
 
   // Getter methods for external access to data
@@ -125,5 +275,19 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
 
   getEdges(): KnowledgeGraphEdge[] {
     return [...this.edges];
+  }
+
+  // Get database instance for external use
+  getDatabase(): KnowledgeGraphDB | null {
+    return this.db;
+  }
+
+  // Cleanup method
+  dispose(): void {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+      log('Database connection closed');
+    }
   }
 }

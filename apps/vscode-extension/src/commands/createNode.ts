@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import { log } from '../extension';
 
 const CreateNodeSchema = z.object({
   type: z.string().min(1, 'Type is required'),
@@ -8,6 +9,7 @@ const CreateNodeSchema = z.object({
 });
 
 export async function createNodeCommand() {
+  log('Create node command started');
   try {
     // Show input box for node type
     const type = await vscode.window.showInputBox({
@@ -75,27 +77,26 @@ export async function createNodeCommand() {
       properties,
     });
 
-    // Generate a unique ID
-    const id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Get the knowledge graph provider from the extension
+    const knowledgeGraphProvider = (global as any).devAtlasKnowledgeGraphProvider;
+    if (!knowledgeGraphProvider) {
+      vscode.window.showErrorMessage('Knowledge graph provider not available');
+      log('Knowledge graph provider not found', 'error');
+      return;
+    }
 
-    // Here you would typically call your MCP server or database
-    // For now, we'll just show a success message
-    vscode.window.showInformationMessage(
-      `Node created successfully!\nID: ${id}\nType: ${nodeData.type}\nLabel: ${nodeData.label}`
-    );
-
-    // Log the node data for debugging
-    console.log('Created node:', { id, ...nodeData });
-
-    // TODO: Integrate with MCP server to actually create the node
-    // await mcpClient.callTool('create_node', nodeData);
+    // Create the node using the provider
+    await knowledgeGraphProvider.addNode(nodeData.label, nodeData.type);
+    log(`Node created: ${nodeData.label} (${nodeData.type})`);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errorMessage = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
       vscode.window.showErrorMessage(`Validation error: ${errorMessage}`);
+      log(`Validation error: ${errorMessage}`, 'error');
     } else {
       vscode.window.showErrorMessage(`Error creating node: ${error}`);
+      log(`Error creating node: ${error}`, 'error');
     }
   }
 }
