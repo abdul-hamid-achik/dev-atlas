@@ -1,9 +1,19 @@
 {
-  "name": "@dev-atlas/vscode-extension",
+  "name": "dev-atlas-vscode-extension",
   "displayName": "Dev Atlas",
   "description": "Dev Atlas - Knowledge Graph Extension for VS Code/Cursor",
   "version": "0.1.0",
   "publisher": "dev-atlas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdul-hamid-achik/dev-atlas.git",
+    "directory": "apps/vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/abdul-hamid-achik/dev-atlas/issues"
+  },
+  "homepage": "https://github.com/abdul-hamid-achik/dev-atlas#readme",
   "engines": {
     "vscode": "^1.74.0"
   },

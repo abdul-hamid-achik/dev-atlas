@@ -126,3 +126,4 @@ Planned features for future releases:
 - Advanced filtering options
 - Real-time collaboration features
 - Integration with external graph databases
+
