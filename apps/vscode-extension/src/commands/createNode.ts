@@ -14,6 +14,11 @@ const CreateNodeSchema = z.object({
   properties: z.record(z.any()).optional(),
 });
 
+/**
+ * VS Code command for creating a new node in the knowledge graph.
+ * Prompts the user for node type, label, and optional properties through input boxes.
+ * Validates the input and creates the node using the knowledge graph provider.
+ */
 export async function createNodeCommand() {
   log('Create node command started');
   try {
@@ -92,7 +97,7 @@ export async function createNodeCommand() {
     }
 
     // Create the node using the provider
-    await knowledgeGraphProvider.addNode(nodeData.label, nodeData.type);
+    await knowledgeGraphProvider.addNode(nodeData.label, nodeData.type, nodeData.properties);
     log(`Node created: ${nodeData.label} (${nodeData.type})`);
   } catch (error) {
     if (error instanceof z.ZodError) {

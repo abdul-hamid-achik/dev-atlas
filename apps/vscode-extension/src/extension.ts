@@ -4,14 +4,23 @@ import { createNodeCommand } from './commands/createNode';
 import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
 
-// Global provider interface for commands to access
+/**
+ * Global provider interface for commands to access the knowledge graph provider.
+ * This allows commands to interact with the shared provider instance.
+ */
 type GlobalWithProvider = typeof globalThis & {
   devAtlasKnowledgeGraphProvider?: KnowledgeGraphProvider;
 };
 
-// Create output channel for logging
+/** VS Code output channel for logging Dev Atlas extension messages */
 const outputChannel = vscode.window.createOutputChannel('Dev Atlas');
 
+/**
+ * Logs messages to both the VS Code output channel and console.
+ * 
+ * @param message The message to log
+ * @param level The log level (info, warn, or error)
+ */
 export function log(message: string, level: 'info' | 'warn' | 'error' = 'info') {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] [${level.toUpperCase()}] ${message}`;
@@ -31,6 +40,12 @@ export function log(message: string, level: 'info' | 'warn' | 'error' = 'info') 
   }
 }
 
+/**
+ * Activates the Dev Atlas VS Code extension.
+ * Sets up the knowledge graph provider, registers commands, and configures the UI.
+ * 
+ * @param context The VS Code extension context providing access to extension lifecycle and resources
+ */
 export function activate(context: vscode.ExtensionContext) {
   log('Dev Atlas extension is now active!');
   log(`Extension path: ${context.extensionPath}`);
@@ -52,7 +67,7 @@ export function activate(context: vscode.ExtensionContext) {
     'dev-atlas.openKnowledgeGraph',
     () => {
       log('Opening knowledge graph visualizer');
-      GraphVisualizerPanel.createOrShow(context.extensionUri, provider);
+      GraphVisualizerPanel.createOrShow(context.extensionUri, provider, context);
     }
   );
 
@@ -66,11 +81,34 @@ export function activate(context: vscode.ExtensionContext) {
     createEdgeCommand();
   });
 
+  const configureFilePrefixCmd = vscode.commands.registerCommand('dev-atlas.configureFilePrefix', async () => {
+    log('Configure file prefix command triggered');
+    const config = vscode.workspace.getConfiguration('devAtlas');
+    const currentPrefix = config.get<string>('filePathPrefix', '@');
+
+    const newPrefix = await vscode.window.showInputBox({
+      prompt: 'Enter file path prefix for clipboard copying',
+      value: currentPrefix,
+      placeHolder: 'e.g., @ for Cursor, # for others, or empty for no prefix',
+      validateInput: (value) => {
+        // Allow any string including empty
+        return null;
+      }
+    });
+
+    if (newPrefix !== undefined) {
+      await config.update('filePathPrefix', newPrefix, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage(`File path prefix updated to: "${newPrefix}"`);
+      log(`File path prefix updated to: "${newPrefix}"`);
+    }
+  });
+
   // Add commands to context
   context.subscriptions.push(
     openKnowledgeGraphCommand,
     createNodeCmd,
     createEdgeCmd,
+    configureFilePrefixCmd,
     outputChannel
   );
   log('Commands registered successfully');
@@ -84,6 +122,10 @@ export function activate(context: vscode.ExtensionContext) {
   log('Dev Atlas extension activation completed');
 }
 
+/**
+ * Deactivates the Dev Atlas VS Code extension.
+ * Performs cleanup by disposing of the provider and clearing global references.
+ */
 export function deactivate() {
   log('Dev Atlas extension is being deactivated');
 

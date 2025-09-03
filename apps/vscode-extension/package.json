@@ -24,7 +24,8 @@
   "activationEvents": [
     "onCommand:dev-atlas.openKnowledgeGraph",
     "onCommand:dev-atlas.createNode",
-    "onCommand:dev-atlas.createEdge"
+    "onCommand:dev-atlas.createEdge",
+    "onCommand:dev-atlas.configureFilePrefix"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -32,17 +33,38 @@
       {
         "command": "dev-atlas.openKnowledgeGraph",
         "title": "Open Knowledge Graph",
-        "category": "Dev Atlas"
+        "category": "Dev Atlas",
+        "icon": "$(graph-line)"
       },
       {
         "command": "dev-atlas.createNode",
         "title": "Create Node",
-        "category": "Dev Atlas"
+        "category": "Dev Atlas",
+        "icon": "$(circle-large-outline)"
       },
       {
         "command": "dev-atlas.createEdge",
         "title": "Create Edge",
-        "category": "Dev Atlas"
+        "category": "Dev Atlas",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "dev-atlas.configureFilePrefix",
+        "title": "Configure File Path Prefix",
+        "category": "Dev Atlas",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "dev-atlas.searchKnowledgeGraph",
+        "title": "Search Knowledge Graph",
+        "category": "Dev Atlas",
+        "icon": "$(search)"
+      },
+      {
+        "command": "dev-atlas.advancedSearch",
+        "title": "Advanced Search",
+        "category": "Dev Atlas", 
+        "icon": "$(search-fuzzy)"
       }
     ],
     "views": {
@@ -76,8 +98,74 @@
           "command": "dev-atlas.openKnowledgeGraph",
           "when": "view == dev-atlas-knowledge-graph",
           "group": "navigation"
+        },
+        {
+          "command": "dev-atlas.createNode",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dev-atlas.createEdge",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@2"
+        },
+        {
+          "command": "dev-atlas.configureFilePrefix",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "dev-atlas.openKnowledgeGraph",
+          "title": "Dev Atlas: Open Knowledge Graph"
+        },
+        {
+          "command": "dev-atlas.createNode",
+          "title": "Dev Atlas: Create Node"
+        },
+        {
+          "command": "dev-atlas.createEdge",
+          "title": "Dev Atlas: Create Edge"
+        },
+        {
+          "command": "dev-atlas.configureFilePrefix",
+          "title": "Dev Atlas: Configure File Path Prefix"
         }
       ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Dev Atlas",
+      "properties": {
+        "devAtlas.filePathPrefix": {
+          "type": "string",
+          "default": "@",
+          "description": "Prefix character to add before file paths when copying to clipboard (e.g., '@' for Cursor, '#' for other editors, or empty for no prefix)",
+          "examples": [
+            "@",
+            "#",
+            "",
+            ">"
+          ]
+        },
+        "devAtlas.autoOpenFiles": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open file nodes without asking"
+        },
+        "devAtlas.defaultFileAction": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "open",
+            "copy",
+            "both"
+          ],
+          "default": "ask",
+          "description": "Default action when clicking file nodes: ask (prompt user), open (open in editor), copy (copy to clipboard), both (open and copy)"
+        }
+      }
     }
   },
   "scripts": {

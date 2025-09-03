@@ -56,11 +56,9 @@ npm run package
 
 The extension provides several commands accessible via Ctrl+Shift+P:
 
-- `Dev Atlas: Open Knowledge Graph` - Open the main graph view
-- `Dev Atlas: Create Node` - Create a new knowledge node
-- `Dev Atlas: Create Edge` - Link two nodes together
-- `Dev Atlas: Search Graph` - Search across all nodes
-- `Dev Atlas: Export Graph` - Export graph data
+- `Dev Atlas: Open Knowledge Graph` - Open the interactive graph visualization
+- `Dev Atlas: Create Node` - Create a new knowledge node with guided input
+- `Dev Atlas: Create Edge` - Link two nodes together with relationship types
 
 ## Views
 
@@ -80,28 +78,26 @@ The main graph view provides:
 
 ## Configuration
 
-Customize the extension through VS Code settings:
+The extension automatically detects and connects to the knowledge graph database in your workspace. The database file (`knowledge-graph.db`) is typically located at the project root.
 
-```json
-{
-  "devAtlas.server.url": "http://localhost:3000",
-  "devAtlas.graph.autoLayout": true,
-  "devAtlas.graph.theme": "dark",
-  "devAtlas.search.fuzzy": true,
-  "devAtlas.notifications.enabled": true
-}
-```
+### Database Location
+
+The extension searches for the database in the following order:
+1. Environment variable `KNOWLEDGE_GRAPH_DIR`
+2. Workspace root directory
+3. Current working directory
+
+### Customization
+
+While the extension works out-of-the-box, you can customize the experience through VS Code's standard theming and UI settings.
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+G` | Open Knowledge Graph |
-| `Ctrl+K, N` | Create New Node |
-| `Ctrl+K, E` | Create New Edge |
-| `Ctrl+K, S` | Search Graph |
-| `F2` | Rename Selected Node |
-| `Delete` | Delete Selected Item |
+| Command | Description |
+|---------|-------------|
+| Create Node | Add new knowledge nodes through guided prompts |
+| Create Edge | Connect nodes with typed relationships |
+| Open Visualizer | Launch interactive graph visualization |
 
 ## Development
 

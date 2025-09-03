@@ -422,10 +422,12 @@ export default function HomePage() {
                   <AccordionContent className="pt-4">
                     <div className="grid gap-3 sm:grid-cols-2">
                       {[
-                        { name: 'create_entities', desc: 'Create new knowledge entities' },
-                        { name: 'create_relations', desc: 'Create relationships between entities' },
-                        { name: 'search_nodes', desc: 'Search through the knowledge graph' },
-                        { name: 'read_graph', desc: 'Read the entire knowledge graph' },
+                        { name: 'create_node', desc: 'Create new knowledge nodes' },
+                        { name: 'create_edge', desc: 'Create relationships between nodes' },
+                        { name: 'vector_search_nodes', desc: 'Semantic similarity search' },
+                        { name: 'analyze_file', desc: 'Extract code structure from files' },
+                        { name: 'get_subgraph', desc: 'Extract connected subgraphs' },
+                        { name: 'detect_patterns', desc: 'Identify patterns in the graph' },
                       ].map((api) => (
                         <Card key={api.name} className="border-0 bg-slate-50 dark:bg-slate-700/50">
                           <CardContent className="p-4">

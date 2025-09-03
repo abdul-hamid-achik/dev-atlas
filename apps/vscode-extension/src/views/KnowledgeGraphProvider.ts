@@ -3,6 +3,10 @@ import { KnowledgeGraphDB } from '../db/index';
 import type { Edge, Node } from '../db/schema';
 import { log } from '../extension';
 
+/**
+ * Represents a knowledge graph node in the VS Code tree view.
+ * Extends TreeItem to integrate with VS Code's explorer interface.
+ */
 export class KnowledgeGraphNode extends vscode.TreeItem {
   constructor(
     public readonly label: string,
@@ -20,6 +24,10 @@ export class KnowledgeGraphNode extends vscode.TreeItem {
   iconPath = new vscode.ThemeIcon('circle-outline');
 }
 
+/**
+ * Represents a knowledge graph edge in the VS Code tree view.
+ * Shows relationships between nodes in the explorer interface.
+ */
 export class KnowledgeGraphEdge extends vscode.TreeItem {
   constructor(
     public readonly label: string,
@@ -37,9 +45,13 @@ export class KnowledgeGraphEdge extends vscode.TreeItem {
   iconPath = new vscode.ThemeIcon('arrow-right');
 }
 
+/**
+ * Provides data for the knowledge graph tree view in VS Code.
+ * Implements TreeDataProvider to display nodes and edges in the explorer panel.
+ * Handles data loading, refresh, and interaction with the knowledge graph database.
+ */
 export class KnowledgeGraphProvider
-  implements vscode.TreeDataProvider<KnowledgeGraphNode | KnowledgeGraphEdge>
-{
+  implements vscode.TreeDataProvider<KnowledgeGraphNode | KnowledgeGraphEdge> {
   private _onDidChangeTreeData: vscode.EventEmitter<
     KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | undefined
   > = new vscode.EventEmitter<
@@ -253,14 +265,14 @@ export class KnowledgeGraphProvider
   }
 
   // Method to add a new node
-  async addNode(label: string, type: string): Promise<void> {
+  async addNode(label: string, type: string, properties?: Record<string, unknown>): Promise<void> {
     try {
       if (!this.db) {
         throw new Error('Database not initialized');
       }
 
       log(`Adding new node: ${label} (${type})`);
-      const node = await this.db.createNode({ label, type });
+      const node = await this.db.createNode({ label, type, properties });
 
       const newNode = new KnowledgeGraphNode(
         node.label,
@@ -279,14 +291,20 @@ export class KnowledgeGraphProvider
   }
 
   // Method to add a new edge
-  async addEdge(sourceId: string, targetId: string, type: string): Promise<void> {
+  async addEdge(sourceId: string, targetId: string, type: string, properties?: Record<string, unknown>, weight?: number): Promise<void> {
     try {
       if (!this.db) {
         throw new Error('Database not initialized');
       }
 
       log(`Adding new edge: ${sourceId} -> ${targetId} (${type})`);
-      const edge = await this.db.createEdge({ sourceId, targetId, type });
+      const edge = await this.db.createEdge({
+        sourceId,
+        targetId,
+        type,
+        properties,
+        weight
+      });
 
       const newEdge = new KnowledgeGraphEdge(
         type,
@@ -305,8 +323,13 @@ export class KnowledgeGraphProvider
   }
 
   // Getter methods for external access to data
-  getNodes(): KnowledgeGraphNode[] {
-    return [...this.nodes];
+  getNodes(): Node[] {
+    return this.nodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      label: node.label,
+      properties: {},
+    }));
   }
 
   getEdges(): KnowledgeGraphEdge[] {

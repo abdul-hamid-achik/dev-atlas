@@ -1,124 +1,533 @@
 import * as vscode from 'vscode';
 import {
-  KnowledgeGraphEdge,
-  KnowledgeGraphNode,
-  type KnowledgeGraphProvider,
+    KnowledgeGraphEdge,
+    KnowledgeGraphNode,
+    type KnowledgeGraphProvider,
 } from './KnowledgeGraphProvider';
 
+/**
+ * Manages the webview panel for visualizing the knowledge graph.
+ * Provides an interactive D3.js-based graph visualization with zoom, pan,
+ * and node/edge interaction capabilities. Implements the singleton pattern
+ * to ensure only one visualizer panel is active at a time.
+ */
 export class GraphVisualizerPanel {
-  public static currentPanel: GraphVisualizerPanel | undefined;
-  public static readonly viewType = 'dev-atlas-graph-visualizer';
+    public static currentPanel: GraphVisualizerPanel | undefined;
+    public static readonly viewType = 'dev-atlas-graph-visualizer';
 
-  private readonly _panel: vscode.WebviewPanel;
-  private _disposables: vscode.Disposable[] = [];
+    private readonly _panel: vscode.WebviewPanel;
+    private _disposables: vscode.Disposable[] = [];
+    private _context: vscode.ExtensionContext;
 
-  private constructor(
-    panel: vscode.WebviewPanel,
-    extensionUri: vscode.Uri,
-    private readonly provider: KnowledgeGraphProvider
-  ) {
-    this._panel = panel;
+    private constructor(
+        panel: vscode.WebviewPanel,
+        extensionUri: vscode.Uri,
+        private readonly provider: KnowledgeGraphProvider,
+        context: vscode.ExtensionContext
+    ) {
+        this._panel = panel;
+        this._context = context;
 
-    // Set the webview's initial html content
-    this._update();
+        // Set the webview's initial html content
+        this._update();
 
-    // Listen for when the panel is disposed
-    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+        // Listen for when the panel is disposed
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-    // Handle messages from the webview
-    this._panel.webview.onDidReceiveMessage(
-      (message) => {
-        switch (message.command) {
-          case 'alert':
-            vscode.window.showInformationMessage(message.text);
-            return;
-          case 'nodeClicked':
-            vscode.window.showInformationMessage(`Node clicked: ${message.nodeId}`);
-            return;
-          case 'edgeClicked':
-            vscode.window.showInformationMessage(`Edge clicked: ${message.edgeId}`);
-            return;
-          case 'refreshGraph':
-            this._update(); // Refresh the webview content
-            vscode.window.showInformationMessage('Graph data refreshed');
+        // Handle messages from the webview
+        this._panel.webview.onDidReceiveMessage(
+            (message) => {
+                switch (message.command) {
+                    case 'alert':
+                        vscode.window.showInformationMessage(message.text);
+                        return;
+                    case 'nodeClicked':
+                        this._handleNodeClick(message.nodeId, message.nodeData);
+                        return;
+                    case 'edgeClicked':
+                        vscode.window.showInformationMessage(`Edge clicked: ${message.edgeId}`);
+                        return;
+                    case 'refreshGraph':
+                        this._update(); // Refresh the webview content
+                        vscode.window.showInformationMessage('Graph data refreshed');
+                        return;
+                }
+            },
+            null,
+            this._disposables
+        );
+    }
+
+    /**
+     * Creates a new GraphVisualizerPanel or shows the existing one.
+     * Implements singleton pattern to ensure only one panel exists.
+     * 
+     * @param extensionUri The URI of the extension for loading resources
+     * @param provider The knowledge graph provider for data access
+     */
+    public static createOrShow(extensionUri: vscode.Uri, provider: KnowledgeGraphProvider, context: vscode.ExtensionContext) {
+        const column = vscode.window.activeTextEditor
+            ? vscode.window.activeTextEditor.viewColumn
+            : undefined;
+
+        // If we already have a panel, show it.
+        if (GraphVisualizerPanel.currentPanel) {
+            GraphVisualizerPanel.currentPanel._panel.reveal(column);
+            GraphVisualizerPanel.currentPanel._update();
             return;
         }
-      },
-      null,
-      this._disposables
-    );
-  }
 
-  public static createOrShow(extensionUri: vscode.Uri, provider: KnowledgeGraphProvider) {
-    const column = vscode.window.activeTextEditor
-      ? vscode.window.activeTextEditor.viewColumn
-      : undefined;
+        // Otherwise, create a new panel.
+        const panel = vscode.window.createWebviewPanel(
+            GraphVisualizerPanel.viewType,
+            'Knowledge Graph Visualizer',
+            column || vscode.ViewColumn.One,
+            {
+                enableScripts: true,
+                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
+            }
+        );
 
-    // If we already have a panel, show it.
-    if (GraphVisualizerPanel.currentPanel) {
-      GraphVisualizerPanel.currentPanel._panel.reveal(column);
-      GraphVisualizerPanel.currentPanel._update();
-      return;
+        GraphVisualizerPanel.currentPanel = new GraphVisualizerPanel(panel, extensionUri, provider, context);
     }
 
-    // Otherwise, create a new panel.
-    const panel = vscode.window.createWebviewPanel(
-      GraphVisualizerPanel.viewType,
-      'Knowledge Graph Visualizer',
-      column || vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
-      }
-    );
+    public dispose() {
+        GraphVisualizerPanel.currentPanel = undefined;
 
-    GraphVisualizerPanel.currentPanel = new GraphVisualizerPanel(panel, extensionUri, provider);
-  }
+        // Clean up our resources
+        this._panel.dispose();
 
-  public dispose() {
-    GraphVisualizerPanel.currentPanel = undefined;
-
-    // Clean up our resources
-    this._panel.dispose();
-
-    while (this._disposables.length) {
-      const x = this._disposables.pop();
-      if (x) {
-        x.dispose();
-      }
+        while (this._disposables.length) {
+            const x = this._disposables.pop();
+            if (x) {
+                x.dispose();
+            }
+        }
     }
-  }
 
-  private _update() {
-    const webview = this._panel.webview;
+    /**
+     * Handles node click events from the graph visualization.
+     * Detects file-related nodes and prompts user for file opening preferences.
+     */
+    private async _handleNodeClick(nodeId: string, nodeData: any) {
+        try {
+            // Check if this node represents a file
+            const isFileNode = this._isFileNode(nodeData);
 
-    this._panel.title = 'Knowledge Graph Visualizer';
-    this._panel.webview.html = this._getHtmlForWebview(webview);
-  }
+            if (isFileNode) {
+                await this._handleFileNodeClick(nodeData);
+            } else {
+                // Regular node click behavior
+                vscode.window.showInformationMessage(`Node clicked: ${nodeData.label} (${nodeData.type})`);
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Error handling node click: ${error}`);
+        }
+    }
 
-  private _getHtmlForWebview(webview: vscode.Webview) {
-    // Get the graph data from the provider
-    const nodes = this.provider.getNodes();
-    const edges = this.provider.getEdges();
+    /**
+     * Determines if a node represents a file based on its properties.
+     */
+    private _isFileNode(nodeData: any): boolean {
+        // Check various indicators that suggest this node represents a file
+        const type = nodeData.type?.toLowerCase() || '';
+        const label = nodeData.label?.toLowerCase() || '';
+        const properties = nodeData.properties || {};
 
-    // Convert to JSON for the webview
-    const graphData = {
-      nodes: nodes.map((node) => ({
-        id: node.id,
-        label: node.label,
-        type: node.type,
-        group: this._getNodeGroup(node.type),
-      })),
-      edges: edges.map((edge) => ({
-        id: edge.id,
-        source: edge.sourceId,
-        target: edge.targetId,
-        label: edge.label,
-        type: edge.type,
-      })),
-    };
+        // Check if type indicates a file
+        if (['file', 'source-file', 'document', 'script', 'configuration'].includes(type)) {
+            return true;
+        }
 
-    return `<!DOCTYPE html>
+        // Check if label has file extension
+        if (label.match(/\.(ts|js|jsx|tsx|py|java|cpp|c|h|css|scss|html|md|json|xml|yaml|yml|config|env)$/)) {
+            return true;
+        }
+
+        // Check if properties indicate a file
+        if (properties.filePath || properties.fileName || properties.extension || properties.isFile) {
+            return true;
+        }
+
+        // Check if label contains file path patterns
+        if (label.includes('/') && (label.includes('.') || label.startsWith('src/') || label.startsWith('app/'))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Handles clicks on file nodes, managing user preferences for file opening and copying.
+     */
+    private async _handleFileNodeClick(nodeData: any) {
+        // Get configuration settings
+        const config = vscode.workspace.getConfiguration('devAtlas');
+        const defaultAction = config.get<string>('defaultFileAction', 'ask');
+        const autoOpenFiles = config.get<boolean>('autoOpenFiles', false);
+
+        // Extract potential file paths from node data
+        const filePaths = this._extractFilePaths(nodeData);
+
+        if (filePaths.length === 0) {
+            vscode.window.showInformationMessage(`File node: ${nodeData.label} (no valid file paths found)`);
+            return;
+        }
+
+        // Handle based on configuration
+        switch (defaultAction) {
+            case 'open':
+                await this._openFiles(filePaths);
+                break;
+            case 'copy':
+                await this._copyFilesToClipboard(filePaths);
+                break;
+            case 'both':
+                await this._openFiles(filePaths);
+                await this._copyFilesToClipboard(filePaths);
+                break;
+            default: // 'ask'
+                await this._showFileActionDialog(filePaths);
+                break;
+        }
+    }
+
+    /**
+     * Extracts potential file paths from node data.
+     */
+    private _extractFilePaths(nodeData: any): string[] {
+        const paths: string[] = [];
+        const label = nodeData.label || '';
+        const properties = nodeData.properties || {};
+
+        // Check if properties contain explicit file paths
+        if (properties.filePath) {
+            if (Array.isArray(properties.filePath)) {
+                paths.push(...properties.filePath);
+            } else {
+                paths.push(properties.filePath);
+            }
+        }
+
+        if (properties.fileName) {
+            paths.push(properties.fileName);
+        }
+
+        // If label looks like a file path, add it
+        if (label.includes('/') || label.includes('.')) {
+            // Try to resolve relative to workspace
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (workspaceFolders && workspaceFolders.length > 0) {
+                const workspaceRoot = workspaceFolders[0].uri.fsPath;
+                const fullPath = require('path').resolve(workspaceRoot, label);
+                paths.push(fullPath);
+            }
+
+            // Also add the raw label as a potential path
+            paths.push(label);
+        }
+
+        return paths.filter(path => path && path.trim().length > 0);
+    }
+
+    /**
+     * Shows dialog for file actions (open, copy, both) and handles user selection.
+     */
+    private async _showFileActionDialog(filePaths: string[]) {
+        // Create action options
+        const actionOptions: vscode.QuickPickItem[] = [
+            {
+                label: "$(file) Open Files",
+                description: "Open selected files in editor",
+                detail: "Opens files in VSCode for editing"
+            },
+            {
+                label: "$(clippy) Copy to Clipboard",
+                description: "Copy file paths to clipboard with prefix",
+                detail: "Copies with configured prefix for quick pasting in other tools"
+            },
+            {
+                label: "$(multiple-windows) Open & Copy",
+                description: "Both open files and copy to clipboard",
+                detail: "Combines both actions for maximum convenience"
+            }
+        ];
+
+        const selectedAction = await vscode.window.showQuickPick(actionOptions, {
+            placeHolder: 'Choose action for file paths',
+            title: `File Action for ${filePaths.length} file(s)`
+        });
+
+        if (!selectedAction) {
+            return;
+        }
+
+        // Show file selection dialog
+        const fileOptions: vscode.QuickPickItem[] = filePaths.map(path => ({
+            label: require('path').basename(path),
+            description: path,
+            picked: true // Default to selected
+        }));
+
+        // Add preference options for remembering choice
+        const preferenceItems: vscode.QuickPickItem[] = [
+            {
+                label: "$(gear) Remember this choice for file nodes",
+                description: "Set this as the default action for future file clicks",
+                picked: false
+            }
+        ];
+
+        const allItems = [...fileOptions, { kind: vscode.QuickPickItemKind.Separator, label: 'Preferences' }, ...preferenceItems];
+
+        const selected = await vscode.window.showQuickPick(allItems, {
+            canPickMany: true,
+            placeHolder: 'Select files to process (uncheck to exclude)',
+            title: `Select Files - ${selectedAction.label.replace(/\$\([^)]+\)\s*/, '')}`
+        });
+
+        if (!selected || selected.length === 0) {
+            return;
+        }
+
+        // Check if user wants to remember this choice
+        const rememberChoice = selected.some(item => item.label.includes("Remember this choice"));
+
+        // Get selected files
+        const selectedFiles = selected
+            .filter(item => !item.label.startsWith('$('))
+            .map(item => item.description!)
+            .filter(Boolean);
+
+        if (selectedFiles.length === 0) {
+            return;
+        }
+
+        // Execute the selected action
+        if (selectedAction.label.includes("Open Files") || selectedAction.label.includes("Open & Copy")) {
+            await this._openFiles(selectedFiles);
+        }
+
+        if (selectedAction.label.includes("Copy to Clipboard") || selectedAction.label.includes("Open & Copy")) {
+            await this._copyFilesToClipboard(selectedFiles);
+        }
+
+        // Remember choice if requested
+        if (rememberChoice) {
+            const config = vscode.workspace.getConfiguration('devAtlas');
+            let defaultAction = 'ask';
+
+            if (selectedAction.label.includes("Open & Copy")) {
+                defaultAction = 'both';
+            } else if (selectedAction.label.includes("Copy to Clipboard")) {
+                defaultAction = 'copy';
+            } else if (selectedAction.label.includes("Open Files")) {
+                defaultAction = 'open';
+            }
+
+            await config.update('defaultFileAction', defaultAction, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage(`Default file action set to: ${defaultAction}`);
+        }
+    }
+
+    /**
+     * Legacy function - keeping for backwards compatibility
+     */
+    private async _showFileOpeningDialog(filePaths: string[], currentPrefs: any) {
+        const PREF_KEY = 'dev-atlas.fileOpeningPreferences';
+
+        // Create options for the dialog
+        const options: vscode.QuickPickItem[] = filePaths.map(path => ({
+            label: require('path').basename(path),
+            description: path,
+            picked: true // Default to selected
+        }));
+
+        // Add preference options
+        const preferenceItems: vscode.QuickPickItem[] = [
+            {
+                label: "$(gear) Don't ask again - always open files",
+                description: "Set preference to automatically open file nodes",
+                picked: false
+            },
+            {
+                label: "$(x) Don't ask again - never open files",
+                description: "Set preference to never open file nodes",
+                picked: false
+            }
+        ];
+
+        const allItems = [...options, { kind: vscode.QuickPickItemKind.Separator, label: 'Preferences' }, ...preferenceItems];
+
+        const selected = await vscode.window.showQuickPick(allItems, {
+            canPickMany: true,
+            placeHolder: 'Select files to open (uncheck to exclude)',
+            title: 'Open Files from Knowledge Graph Node'
+        });
+
+        if (!selected || selected.length === 0) {
+            return;
+        }
+
+        // Check if user selected a preference option
+        const alwaysOpenSelected = selected.some(item => item.label.includes("always open files"));
+        const neverOpenSelected = selected.some(item => item.label.includes("never open files"));
+
+        if (alwaysOpenSelected) {
+            await this._context.globalState.update(PREF_KEY, {
+                ...currentPrefs,
+                askBeforeOpening: false,
+                autoOpenFileNodes: true
+            });
+            vscode.window.showInformationMessage('File opening preference updated: will always open files');
+
+            // Open all files
+            await this._openFiles(filePaths);
+        } else if (neverOpenSelected) {
+            await this._context.globalState.update(PREF_KEY, {
+                ...currentPrefs,
+                askBeforeOpening: false,
+                autoOpenFileNodes: false
+            });
+            vscode.window.showInformationMessage('File opening preference updated: will never open files');
+        } else {
+            // Open only selected files
+            const filesToOpen = selected
+                .filter(item => !item.label.startsWith('$('))
+                .map(item => item.description!)
+                .filter(Boolean);
+
+            if (filesToOpen.length > 0) {
+                await this._openFiles(filesToOpen);
+            }
+        }
+    }
+
+    /**
+     * Opens the specified files in VSCode editor.
+     */
+    private async _openFiles(filePaths: string[]) {
+        let openedCount = 0;
+
+        for (const filePath of filePaths) {
+            try {
+                // Check if file exists
+                const fs = require('fs');
+                if (!fs.existsSync(filePath)) {
+                    vscode.window.showWarningMessage(`File not found: ${filePath}`);
+                    continue;
+                }
+
+                // Open the file
+                const document = await vscode.workspace.openTextDocument(filePath);
+                await vscode.window.showTextDocument(document);
+                openedCount++;
+            } catch (error) {
+                vscode.window.showErrorMessage(`Failed to open ${filePath}: ${error}`);
+            }
+        }
+
+        if (openedCount > 0) {
+            vscode.window.showInformationMessage(`Opened ${openedCount} file(s)`);
+        }
+    }
+
+    /**
+     * Copies file paths to clipboard with configurable prefix.
+     */
+    private async _copyFilesToClipboard(filePaths: string[]) {
+        try {
+            const config = vscode.workspace.getConfiguration('devAtlas');
+            const prefix = config.get<string>('filePathPrefix', '@');
+
+            // Filter existing files
+            const fs = require('fs');
+            const existingFiles = filePaths.filter(path => {
+                if (!fs.existsSync(path)) {
+                    vscode.window.showWarningMessage(`File not found: ${path}`);
+                    return false;
+                }
+                return true;
+            });
+
+            if (existingFiles.length === 0) {
+                vscode.window.showErrorMessage('No valid files to copy');
+                return;
+            }
+
+            // Convert to relative paths if possible
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            const processedPaths = existingFiles.map(filePath => {
+                let relativePath = filePath;
+
+                // Try to make relative to workspace if possible
+                if (workspaceFolders && workspaceFolders.length > 0) {
+                    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+                    const path = require('path');
+
+                    if (filePath.startsWith(workspaceRoot)) {
+                        relativePath = path.relative(workspaceRoot, filePath);
+                    }
+                }
+
+                // Add prefix if configured
+                if (prefix && prefix.trim().length > 0) {
+                    return `${prefix}${relativePath}`;
+                }
+
+                return relativePath;
+            });
+
+            // Join paths with newlines for multi-file copying
+            const clipboardContent = processedPaths.join('\n');
+
+            // Copy to clipboard
+            await vscode.env.clipboard.writeText(clipboardContent);
+
+            // Show success message with preview
+            const previewText = processedPaths.length > 3
+                ? `${processedPaths.slice(0, 3).join(', ')}... (+${processedPaths.length - 3} more)`
+                : processedPaths.join(', ');
+
+            vscode.window.showInformationMessage(
+                `Copied ${processedPaths.length} file path(s) to clipboard: ${previewText}`
+            );
+
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to copy to clipboard: ${error}`);
+        }
+    }
+
+    private _update() {
+        const webview = this._panel.webview;
+
+        this._panel.title = 'Knowledge Graph Visualizer';
+        this._panel.webview.html = this._getHtmlForWebview(webview);
+    }
+
+    private _getHtmlForWebview(webview: vscode.Webview) {
+        // Get the graph data from the provider
+        const nodes = this.provider.getNodes();
+        const edges = this.provider.getEdges();
+
+        // Convert to JSON for the webview
+        const graphData = {
+            nodes: nodes.map((node) => ({
+                id: node.id,
+                label: node.label,
+                type: node.type,
+                group: this._getNodeGroup(node.type),
+            })),
+            edges: edges.map((edge) => ({
+                id: edge.id,
+                source: edge.sourceId,
+                target: edge.targetId,
+                label: edge.label,
+                type: edge.type,
+            })),
+        };
+
+        return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -461,7 +870,8 @@ export class GraphVisualizerPanel {
                     showInfo(d);
                     vscode.postMessage({
                         command: 'nodeClicked',
-                        nodeId: d.id
+                        nodeId: d.id,
+                        nodeData: d
                     });
                 });
                 
@@ -668,25 +1078,25 @@ export class GraphVisualizerPanel {
         </script>
     </body>
     </html>`;
-  }
+    }
 
-  private _getNodeGroup(nodeType: string): number {
-    // Map node types to numeric groups for visualization
-    const typeMap: { [key: string]: number } = {
-      Technology: 1,
-      Language: 2,
-      Runtime: 3,
-      Framework: 4,
-      Library: 5,
-      Tool: 6,
-      Concept: 7,
-      Person: 8,
-      Project: 9,
-      Organization: 10,
-      Documentation: 11,
-      Tutorial: 12,
-      Other: 0,
-    };
-    return typeMap[nodeType] || 0;
-  }
+    private _getNodeGroup(nodeType: string): number {
+        // Map node types to numeric groups for visualization
+        const typeMap: { [key: string]: number } = {
+            Technology: 1,
+            Language: 2,
+            Runtime: 3,
+            Framework: 4,
+            Library: 5,
+            Tool: 6,
+            Concept: 7,
+            Person: 8,
+            Project: 9,
+            Organization: 10,
+            Documentation: 11,
+            Tutorial: 12,
+            Other: 0,
+        };
+        return typeMap[nodeType] || 0;
+    }
 }

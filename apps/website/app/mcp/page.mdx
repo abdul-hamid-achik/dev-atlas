@@ -47,26 +47,56 @@ The MCP server provides:
 
 The server exposes several tools through the MCP protocol:
 
-### Node Operations
+### Core Node Operations
 
 - `create_node`: Create a new node
 - `get_node`: Retrieve a node by ID
 - `query_nodes`: Search and filter nodes
 - `update_node`: Modify existing nodes
 - `delete_node`: Remove nodes
+- `bulk_create_nodes`: Create multiple nodes efficiently
+- `search_nodes`: Full-text search across nodes
 
-### Edge Operations
+### Core Edge Operations
 
 - `create_edge`: Create connections between nodes
 - `get_edge`: Retrieve edge information
 - `query_edges`: Find edges by criteria
+- `update_edge`: Modify existing edges
+- `delete_edge`: Remove edges
+- `bulk_create_edges`: Create multiple edges efficiently
 - `get_neighbors`: Get connected nodes
 
-### Graph Operations
+### Graph Analysis Operations
 
-- `traverse_graph`: Navigate through connections
-- `shortest_path`: Find optimal routes
-- `clustering`: Identify node groups
+- `find_path`: Find shortest path between nodes
+- `get_subgraph`: Extract subgraph around nodes
+- `get_graph_stats`: Get graph statistics
+- `export_graph`: Export graph data
+- `detect_patterns`: Identify patterns in the graph
+
+### Code Analysis Operations
+
+- `analyze_file`: Extract code structure from files
+- `extract_dependencies`: Map file dependencies
+- `map_directory`: Analyze directory structure
+- `extract_todos`: Find TODO comments in code
+- `monitor_changes`: Track file system changes
+- `semantic_analysis`: Semantic code analysis
+
+### Advanced Features
+
+- `create_or_merge_node`: Smart node creation with merging
+- `create_or_merge_edge`: Smart edge creation with merging
+- `get_contextual_information`: Get contextual node data
+- `get_rich_node_context`: Enhanced node context
+
+### Vector Search & AI Operations
+
+- `vector_search_nodes`: Semantic similarity search
+- `generate_embeddings`: Generate node embeddings
+- `hybrid_similarity_search`: Combined search approaches
+- `analyze_vector_similarity`: Vector similarity analysis
 
 ## Database Schema
 
@@ -79,8 +109,10 @@ CREATE TABLE nodes (
   type TEXT NOT NULL,
   label TEXT NOT NULL,
   properties TEXT, -- JSON
-  created_at INTEGER,
-  updated_at INTEGER
+  embedding TEXT, -- Vector embedding for semantic search
+  embedding_model TEXT, -- Model used for embedding
+  created_at INTEGER DEFAULT CURRENT_TIMESTAMP,
+  updated_at INTEGER DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Edges table  
@@ -91,10 +123,23 @@ CREATE TABLE edges (
   type TEXT NOT NULL,
   properties TEXT, -- JSON
   weight REAL,
-  created_at INTEGER,
-  updated_at INTEGER,
+  embedding TEXT, -- Vector embedding for relationship semantics
+  embedding_model TEXT, -- Model used for embedding
+  created_at INTEGER DEFAULT CURRENT_TIMESTAMP,
+  updated_at INTEGER DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (source_id) REFERENCES nodes (id),
   FOREIGN KEY (target_id) REFERENCES nodes (id)
+);
+
+-- Vector search cache for performance
+CREATE TABLE vector_search_cache (
+  id TEXT PRIMARY KEY,
+  query_hash TEXT NOT NULL UNIQUE,
+  query_embedding TEXT NOT NULL,
+  results TEXT NOT NULL, -- JSON
+  model TEXT NOT NULL,
+  created_at INTEGER DEFAULT CURRENT_TIMESTAMP,
+  expires_at INTEGER
 );
 ```
 

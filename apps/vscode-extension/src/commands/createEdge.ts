@@ -17,6 +17,11 @@ const CreateEdgeSchema = z.object({
   weight: z.number().optional(),
 });
 
+/**
+ * VS Code command for creating a new edge (relationship) between nodes in the knowledge graph.
+ * Prompts the user to select source and target nodes, edge type, and optional properties.
+ * Validates the input and creates the edge using the knowledge graph provider.
+ */
 export async function createEdgeCommand() {
   log('Create edge command started');
   try {
@@ -161,7 +166,7 @@ export async function createEdgeCommand() {
     });
 
     // Create the edge using the provider
-    await knowledgeGraphProvider.addEdge(edgeData.sourceId, edgeData.targetId, edgeData.type);
+    await knowledgeGraphProvider.addEdge(edgeData.sourceId, edgeData.targetId, edgeData.type, edgeData.properties, edgeData.weight);
     log(`Edge created: ${edgeData.sourceId} -> ${edgeData.targetId} (${edgeData.type})`);
   } catch (error) {
     if (error instanceof z.ZodError) {
