@@ -7,11 +7,11 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { KnowledgeGraphDB } from './db/index.js';
-import { 
-  CreateNodeSchema, 
-  CreateEdgeSchema, 
-  QueryNodesSchema, 
-  QueryEdgesSchema 
+import {
+  CreateNodeSchema,
+  CreateEdgeSchema,
+  QueryNodesSchema,
+  QueryEdgesSchema
 } from './types/schema.js';
 
 class KnowledgeGraphMCPServer {
@@ -19,17 +19,10 @@ class KnowledgeGraphMCPServer {
   private db: KnowledgeGraphDB;
 
   constructor() {
-    this.server = new Server(
-      {
-        name: 'knowledge-graph-mcp',
-        version: '0.1.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
+    this.server = new Server({
+      name: 'knowledge-graph-mcp',
+      version: '0.1.0',
+    });
 
     this.db = new KnowledgeGraphDB();
     this.setupToolHandlers();
@@ -123,8 +116,8 @@ class KnowledgeGraphMCPServer {
               type: 'object',
               properties: {
                 nodeId: { type: 'string', description: 'Node ID to get neighbors for' },
-                direction: { 
-                  type: 'string', 
+                direction: {
+                  type: 'string',
                   enum: ['in', 'out', 'both'],
                   description: 'Direction of edges to follow',
                   default: 'both'
@@ -241,9 +234,9 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'get_neighbors': {
-            const { nodeId, direction = 'both' } = args as { 
-              nodeId: string; 
-              direction?: 'in' | 'out' | 'both' 
+            const { nodeId, direction = 'both' } = args as {
+              nodeId: string;
+              direction?: 'in' | 'out' | 'both'
             };
             const neighbors = await this.db.getNeighbors(nodeId, direction);
             return {

@@ -69,8 +69,6 @@ export class KnowledgeGraphDB {
       type: node.type,
       label: node.label,
       properties: JSON.stringify(node.properties || {}),
-      createdAt: Math.floor(node.createdAt!.getTime() / 1000),
-      updatedAt: Math.floor(node.updatedAt!.getTime() / 1000),
     });
 
     return node;
@@ -78,7 +76,7 @@ export class KnowledgeGraphDB {
 
   async getNode(id: string): Promise<Node | null> {
     const result = await this.db.select().from(nodes).where(eq(nodes.id, id)).limit(1);
-    
+
     if (result.length === 0) return null;
 
     const node = result[0];
@@ -87,8 +85,8 @@ export class KnowledgeGraphDB {
       type: node.type,
       label: node.label,
       properties: node.properties ? JSON.parse(node.properties as string) : {},
-      createdAt: node.createdAt ? new Date(node.createdAt * 1000) : undefined,
-      updatedAt: node.updatedAt ? new Date(node.updatedAt * 1000) : undefined,
+      createdAt: node.createdAt || undefined,
+      updatedAt: node.updatedAt || undefined,
     };
   }
 
@@ -120,8 +118,8 @@ export class KnowledgeGraphDB {
       type: node.type,
       label: node.label,
       properties: node.properties ? JSON.parse(node.properties as string) : {},
-      createdAt: node.createdAt ? new Date(node.createdAt * 1000) : undefined,
-      updatedAt: node.updatedAt ? new Date(node.updatedAt * 1000) : undefined,
+      createdAt: node.createdAt || undefined,
+      updatedAt: node.updatedAt || undefined,
     }));
   }
 
@@ -142,8 +140,6 @@ export class KnowledgeGraphDB {
       type: edge.type,
       properties: JSON.stringify(edge.properties || {}),
       weight: edge.weight,
-      createdAt: Math.floor(edge.createdAt!.getTime() / 1000),
-      updatedAt: Math.floor(edge.updatedAt!.getTime() / 1000),
     });
 
     return edge;
@@ -151,7 +147,7 @@ export class KnowledgeGraphDB {
 
   async getEdge(id: string): Promise<Edge | null> {
     const result = await this.db.select().from(edges).where(eq(edges.id, id)).limit(1);
-    
+
     if (result.length === 0) return null;
 
     const edge = result[0];
@@ -162,8 +158,8 @@ export class KnowledgeGraphDB {
       type: edge.type,
       properties: edge.properties ? JSON.parse(edge.properties as string) : {},
       weight: edge.weight || undefined,
-      createdAt: edge.createdAt ? new Date(edge.createdAt * 1000) : undefined,
-      updatedAt: edge.updatedAt ? new Date(edge.updatedAt * 1000) : undefined,
+      createdAt: edge.createdAt || undefined,
+      updatedAt: edge.updatedAt || undefined,
     };
   }
 
@@ -198,15 +194,15 @@ export class KnowledgeGraphDB {
       type: edge.type,
       properties: edge.properties ? JSON.parse(edge.properties as string) : {},
       weight: edge.weight || undefined,
-      createdAt: edge.createdAt ? new Date(edge.createdAt * 1000) : undefined,
-      updatedAt: edge.updatedAt ? new Date(edge.updatedAt * 1000) : undefined,
+      createdAt: edge.createdAt || undefined,
+      updatedAt: edge.updatedAt || undefined,
     }));
   }
 
   // Graph traversal
   async getNeighbors(nodeId: string, direction: 'in' | 'out' | 'both' = 'both'): Promise<{ node: Node; edge: Edge }[]> {
     let results: any[] = [];
-    
+
     if (direction === 'in' || direction === 'both') {
       const inResults = await this.db
         .select({ node: nodes, edge: edges })
@@ -215,7 +211,7 @@ export class KnowledgeGraphDB {
         .where(eq(edges.targetId, nodeId));
       results = results.concat(inResults);
     }
-    
+
     if (direction === 'out' || direction === 'both') {
       const outResults = await this.db
         .select({ node: nodes, edge: edges })
@@ -231,8 +227,8 @@ export class KnowledgeGraphDB {
         type: result.node.type,
         label: result.node.label,
         properties: result.node.properties ? JSON.parse(result.node.properties as string) : {},
-        createdAt: result.node.createdAt ? new Date(result.node.createdAt * 1000) : undefined,
-        updatedAt: result.node.updatedAt ? new Date(result.node.updatedAt * 1000) : undefined,
+        createdAt: result.node.createdAt || undefined,
+        updatedAt: result.node.updatedAt || undefined,
       },
       edge: {
         id: result.edge.id,
@@ -241,8 +237,8 @@ export class KnowledgeGraphDB {
         type: result.edge.type,
         properties: result.edge.properties ? JSON.parse(result.edge.properties as string) : {},
         weight: result.edge.weight || undefined,
-        createdAt: result.edge.createdAt ? new Date(result.edge.createdAt * 1000) : undefined,
-        updatedAt: result.edge.updatedAt ? new Date(result.edge.updatedAt * 1000) : undefined,
+        createdAt: result.edge.createdAt || undefined,
+        updatedAt: result.edge.updatedAt || undefined,
       },
     }));
   }

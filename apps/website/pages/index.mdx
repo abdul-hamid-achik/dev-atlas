@@ -2,7 +2,7 @@
 title: Dev Atlas - Knowledge Graph for Developers
 ---
 
-import { Callout, Cards, Card } from 'nextra/components'
+import { Callout } from 'nextra/components'
 
 # Dev Atlas 🗺️
 
@@ -27,20 +27,28 @@ Dev Atlas transforma la manera en que organizas y navegas el conocimiento de des
 
 ## Características Principales
 
-<Cards>
-  <Card icon="🔗" title="Servidor MCP Potente" href="/mcp">
-    Gestiona knowledge graphs en SQLite with operaciones CRUD, búsqueda avanzada y traversal de grafos
-  </Card>
-  <Card icon="🎨" title="Extensión VS Code/Cursor" href="/extension">
-    Interfaz visual elegante con comandos integrados y vista en el explorador
-  </Card>
-  <Card icon="⚡" title="Alto Rendimiento" href="/docs/performance">
-    Built with TypeScript, Drizzle ORM, y arquitectura moderna de monorepo
-  </Card>
-  <Card icon="🔍" title="Búsqueda Inteligente" href="/docs/search">
-    Encuentra conexiones y patrones que no habías notado antes
-  </Card>
-</Cards>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+    <div className="text-2xl mb-2">🔗</div>
+    <h3 className="text-xl font-semibold mb-2">Servidor MCP Potente</h3>
+    <p>Gestiona knowledge graphs en SQLite with operaciones CRUD, búsqueda avanzada y traversal de grafos</p>
+  </div>
+  <div className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+    <div className="text-2xl mb-2">🎨</div>
+    <h3 className="text-xl font-semibold mb-2">Extensión VS Code/Cursor</h3>
+    <p>Interfaz visual elegante con comandos integrados y vista en el explorador</p>
+  </div>
+  <div className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+    <div className="text-2xl mb-2">⚡</div>
+    <h3 className="text-xl font-semibold mb-2">Alto Rendimiento</h3>
+    <p>Built with TypeScript, Drizzle ORM, y arquitectura moderna de monorepo</p>
+  </div>
+  <div className="border rounded-lg p-6 hover:shadow-md transition-shadow">
+    <div className="text-2xl mb-2">🔍</div>
+    <h3 className="text-xl font-semibold mb-2">Búsqueda Inteligente</h3>
+    <p>Encuentra conexiones y patrones que no habías notado antes</p>
+  </div>
+</div>
 
 ## ¿Por qué Dev Atlas?
 

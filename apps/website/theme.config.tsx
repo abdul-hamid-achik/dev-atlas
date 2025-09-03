@@ -6,17 +6,9 @@ const config: DocsThemeConfig = {
   project: {
     link: 'https://github.com/abdul-hamid-achik/dev-atlas',
   },
-  chat: {
-    link: 'https://discord.gg',
-  },
   docsRepositoryBase: 'https://github.com/abdul-hamid-achik/dev-atlas/tree/main/apps/website',
   footer: {
-    text: 'Dev Atlas © 2024',
-  },
-  useNextSeoProps() {
-    return {
-      titleTemplate: '%s – Dev Atlas'
-    }
+    content: 'Dev Atlas © 2024',
   },
   head: (
     <>
