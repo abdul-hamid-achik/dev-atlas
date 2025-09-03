@@ -3,7 +3,7 @@
   "displayName": "Dev Atlas",
   "description": "Dev Atlas - Knowledge Graph Extension for VS Code/Cursor",
   "version": "0.1.0",
-  "publisher": "dev-atlas",
+  "publisher": "abdulachik",
   "license": "MIT",
   "repository": {
     "type": "git",
