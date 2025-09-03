@@ -116,33 +116,97 @@ describe('Database Path Resolution', () => {
         }
     });
 
-    it('should prefer project root with dev-atlas name', () => {
-        // Create another project structure with dev-atlas name
-        const devAtlasDir = path.join(tempDir, 'dev-atlas-project');
-        const devAtlasNested = path.join(devAtlasDir, 'packages', 'nested');
+      it('should prefer project root with dev-atlas name', () => {
+    // Create another project structure with dev-atlas name
+    const devAtlasDir = path.join(tempDir, 'dev-atlas-project');
+    const devAtlasNested = path.join(devAtlasDir, 'packages', 'nested');
+    
+    fs.mkdirSync(devAtlasNested, { recursive: true });
+    
+    // Create package.json with dev-atlas name
+    fs.writeFileSync(path.join(devAtlasDir, 'package.json'), JSON.stringify({
+      name: 'dev-atlas',
+      version: '1.0.0'
+    }, null, 2));
+    
+    const originalCwd = process.cwd();
+    process.chdir(devAtlasNested);
+    
+    try {
+      const db = new KnowledgeGraphDB();
+      db.close();
+      
+      const expectedDbPath = path.join(devAtlasDir, 'knowledge-graph.db');
+      expect(fs.existsSync(expectedDbPath)).toBe(true);
+      
+      // Clean up
+      fs.unlinkSync(expectedDbPath);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
 
-        fs.mkdirSync(devAtlasNested, { recursive: true });
+  it('should use KNOWLEDGE_GRAPH_DIR environment variable when set', () => {
+    const customDir = path.join(tempDir, 'custom-env-dir');
+    fs.mkdirSync(customDir);
+    
+    // Set environment variable
+    const originalEnv = process.env.KNOWLEDGE_GRAPH_DIR;
+    process.env.KNOWLEDGE_GRAPH_DIR = customDir;
+    
+    try {
+      const db = new KnowledgeGraphDB();
+      db.close();
+      
+      // Should create database in the environment-specified directory
+      const expectedDbPath = path.join(customDir, 'knowledge-graph.db');
+      expect(fs.existsSync(expectedDbPath)).toBe(true);
+      
+      // Clean up
+      fs.unlinkSync(expectedDbPath);
+    } finally {
+      // Restore original environment variable
+      if (originalEnv !== undefined) {
+        process.env.KNOWLEDGE_GRAPH_DIR = originalEnv;
+      } else {
+        delete process.env.KNOWLEDGE_GRAPH_DIR;
+      }
+    }
+  });
 
-        // Create package.json with dev-atlas name
-        fs.writeFileSync(path.join(devAtlasDir, 'package.json'), JSON.stringify({
-            name: 'dev-atlas',
-            version: '1.0.0'
-        }, null, 2));
-
-        const originalCwd = process.cwd();
-        process.chdir(devAtlasNested);
-
-        try {
-            const db = new KnowledgeGraphDB();
-            db.close();
-
-            const expectedDbPath = path.join(devAtlasDir, 'knowledge-graph.db');
-            expect(fs.existsSync(expectedDbPath)).toBe(true);
-
-            // Clean up
-            fs.unlinkSync(expectedDbPath);
-        } finally {
-            process.chdir(originalCwd);
-        }
-    });
+  it('should prioritize environment variable over project root detection', () => {
+    const customDir = path.join(tempDir, 'env-priority');
+    fs.mkdirSync(customDir);
+    
+    // Set environment variable
+    const originalEnv = process.env.KNOWLEDGE_GRAPH_DIR;
+    process.env.KNOWLEDGE_GRAPH_DIR = customDir;
+    
+    // Change to project directory
+    const originalCwd = process.cwd();
+    process.chdir(projectDir);
+    
+    try {
+      const db = new KnowledgeGraphDB();
+      db.close();
+      
+      // Should use env dir, not project root
+      const envDbPath = path.join(customDir, 'knowledge-graph.db');
+      const projectDbPath = path.join(projectDir, 'knowledge-graph.db');
+      
+      expect(fs.existsSync(envDbPath)).toBe(true);
+      expect(fs.existsSync(projectDbPath)).toBe(false);
+      
+      // Clean up
+      fs.unlinkSync(envDbPath);
+    } finally {
+      // Restore original environment and working directory
+      if (originalEnv !== undefined) {
+        process.env.KNOWLEDGE_GRAPH_DIR = originalEnv;
+      } else {
+        delete process.env.KNOWLEDGE_GRAPH_DIR;
+      }
+      process.chdir(originalCwd);
+    }
+  });
 });

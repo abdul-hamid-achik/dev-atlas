@@ -39,18 +39,33 @@ export class KnowledgeGraphDB {
   private sqlite: Database.Database;
 
   constructor(dbPath?: string) {
-    const projectRoot = findProjectRoot();
-    const defaultPath = dbPath || path.join(projectRoot, 'knowledge-graph.db');
-
+    // Check for explicit directory from environment variable first
+    const envDir = process.env.KNOWLEDGE_GRAPH_DIR;
+    let targetPath: string;
+    
+    if (dbPath) {
+      targetPath = dbPath;
+    } else if (envDir) {
+      targetPath = path.resolve(envDir, 'knowledge-graph.db');
+    } else {
+      const projectRoot = findProjectRoot();
+      targetPath = path.join(projectRoot, 'knowledge-graph.db');
+    }
+    
     // Log database initialization info
     console.error(`[KnowledgeGraph] Current working directory: ${process.cwd()}`);
-    console.error(`[KnowledgeGraph] Project root detected: ${projectRoot}`);
-    console.error(`[KnowledgeGraph] Database path: ${defaultPath}`);
-
-    this.sqlite = new Database(defaultPath);
+    if (envDir) {
+      console.error(`[KnowledgeGraph] Using KNOWLEDGE_GRAPH_DIR: ${envDir}`);
+    } else {
+      const projectRoot = findProjectRoot();
+      console.error(`[KnowledgeGraph] Project root detected: ${projectRoot}`);
+    }
+    console.error(`[KnowledgeGraph] Database path: ${targetPath}`);
+    
+    this.sqlite = new Database(targetPath);
     this.db = drizzle(this.sqlite);
     this.initializeTables();
-
+    
     console.error(`[KnowledgeGraph] Database initialized successfully`);
   }
 

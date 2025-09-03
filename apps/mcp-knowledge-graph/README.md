@@ -30,7 +30,27 @@ Add to your `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "knowledge-graph": {
       "command": "npx",
-      "args": ["dev-atlas-knowledge-graph"]
+      "args": ["dev-atlas-knowledge-graph"],
+      "env": {
+        "KNOWLEDGE_GRAPH_DIR": "/absolute/path/to/your/project"
+      }
+    }
+  }
+}
+```
+
+**Important**: Replace `/absolute/path/to/your/project` with the actual absolute path to your project directory.
+
+For example:
+```json
+{
+  "mcpServers": {
+    "knowledge-graph": {
+      "command": "npx", 
+      "args": ["dev-atlas-knowledge-graph"],
+      "env": {
+        "KNOWLEDGE_GRAPH_DIR": "/Users/yourusername/projects/my-project"
+      }
     }
   }
 }
@@ -45,7 +65,10 @@ Add to your MCP settings in Cursor or create a `mcp.json` in your project:
   "mcpServers": {
     "knowledge-graph": {
       "command": "npx",
-      "args": ["dev-atlas-knowledge-graph"]
+      "args": ["dev-atlas-knowledge-graph"],
+      "env": {
+        "KNOWLEDGE_GRAPH_DIR": "/absolute/path/to/your/project"
+      }
     }
   }
 }
@@ -263,12 +286,46 @@ The schema will be recreated automatically on next startup.
 
 ## 🔍 Troubleshooting
 
+### Database Created in Wrong Location
+
+**Problem**: Database is created in your home directory instead of your project directory.
+
+**Logs show**:
+```
+[KnowledgeGraph] Current working directory: /Users/yourusername
+[KnowledgeGraph] Project root detected: /Users/yourusername
+[KnowledgeGraph] Database path: /Users/yourusername/knowledge-graph.db
+```
+
+**Solution**: Set the `KNOWLEDGE_GRAPH_DIR` environment variable in your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "knowledge-graph": {
+      "command": "npx",
+      "args": ["dev-atlas-knowledge-graph"],
+      "env": {
+        "KNOWLEDGE_GRAPH_DIR": "/Users/yourusername/projects/your-project"
+      }
+    }
+  }
+}
+```
+
+After updating, you should see:
+```
+[KnowledgeGraph] Using KNOWLEDGE_GRAPH_DIR: /Users/yourusername/projects/your-project
+[KnowledgeGraph] Database path: /Users/yourusername/projects/your-project/knowledge-graph.db
+```
+
 ### Database Not Found
 
 If you see database path issues:
 1. Check the startup logs for the detected paths
-2. Ensure you're running from within your project
-3. Verify your project has identifying files (`package.json`, etc.)
+2. Set the `KNOWLEDGE_GRAPH_DIR` environment variable (recommended)
+3. Ensure you're running from within your project
+4. Verify your project has identifying files (`package.json`, etc.)
 
 ### MCP Connection Issues
 
