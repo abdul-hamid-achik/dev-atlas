@@ -1,5 +1,5 @@
 {
-  "name": "@dev-atlas/mcp-knowledge-graph",
+  "name": "dev-atlas-knowledge-graph",
   "version": "0.1.0",
   "description": "MCP server for managing knowledge graph in SQLite",
   "type": "module",
@@ -19,11 +19,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/abdul-hamid-achik/dev-atlas.git",
+    "url": "git+https://github.com/abdul-hamid-achik/dev-atlas.git",
     "directory": "apps/mcp-knowledge-graph"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "scripts": {
     "build": "tsc",
