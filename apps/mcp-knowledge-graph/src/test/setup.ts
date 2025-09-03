@@ -10,8 +10,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   // Clear all data between tests for isolation
-  testDb['sqlite'].exec('DELETE FROM edges');
-  testDb['sqlite'].exec('DELETE FROM nodes');
+  testDb.getSqliteForTesting().exec('DELETE FROM edges');
+  testDb.getSqliteForTesting().exec('DELETE FROM nodes');
 });
 
 afterAll(async () => {

@@ -5,6 +5,7 @@ import { and, desc, eq, like } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 import type {
   CreateEdge,
   CreateNode,
@@ -15,28 +16,28 @@ import type {
 } from '../types/schema.js';
 import { edges, nodes } from './schema.js';
 
-// Database raw result interfaces
-interface DbNodeResult {
-  id: string;
-  type: string;
-  label: string;
-  properties: string | null;
-  created_at: number | null;
-  updated_at: number | null;
-}
+// Zod schemas for runtime validation and type safety
+const DbNodeResultSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  label: z.string(),
+  properties: z.string().nullable(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+});
 
-interface DbEdgeResult {
-  id: string;
-  source_id: string;
-  target_id: string;
-  type: string;
-  properties: string | null;
-  weight: number | null;
-  created_at: number | null;
-  updated_at: number | null;
-}
+const DbEdgeResultSchema = z.object({
+  id: z.string(),
+  source_id: z.string(),
+  target_id: z.string(),
+  type: z.string(),
+  properties: z.string().nullable(),
+  weight: z.number().nullable(),
+  created_at: z.number().nullable(),
+  updated_at: z.number().nullable(),
+});
 
-// File system structure interface
+// Define the interface first to avoid circular reference
 interface FileSystemStructure {
   name: string;
   type: 'file' | 'directory';
@@ -45,30 +46,70 @@ interface FileSystemStructure {
   children?: FileSystemStructure[];
 }
 
-// Code analysis result interfaces
-interface ExtractedFunction {
-  name: string;
-  line: number;
-  type: string;
-}
+const FileSystemStructureSchema: z.ZodType<FileSystemStructure> = z.lazy(() =>
+  z.object({
+    name: z.string(),
+    type: z.enum(['file', 'directory']),
+    path: z.string(),
+    size: z.number().optional(),
+    children: z.array(FileSystemStructureSchema).optional(),
+  })
+);
 
-interface ExtractedClass {
-  name: string;
-  line: number;
-  type: string;
-}
+const ExtractedFunctionSchema = z.object({
+  name: z.string(),
+  line: z.number(),
+  type: z.string(),
+});
 
-interface ExtractedImport {
-  module: string;
-  line: number;
-  type: string;
-}
+const ExtractedClassSchema = z.object({
+  name: z.string(),
+  line: z.number(),
+  type: z.string(),
+});
 
-interface ExtractedComment {
-  content: string;
-  line: number;
-  type: string;
-}
+const ExtractedImportSchema = z.object({
+  module: z.string(),
+  line: z.number(),
+  type: z.string(),
+});
+
+const DetectedPatternSchema = z.object({
+  type: z.string(),
+  name: z.string(),
+  fileNodes: z.array(z.string()).optional(),
+  confidence: z.number(),
+});
+
+const ExtractedTodoSchema = z.object({
+  type: z.string(),
+  text: z.string(),
+  filePath: z.string(),
+  line: z.number(),
+});
+
+const ChangedFileSchema = z.object({
+  path: z.string(),
+  type: z.string(),
+});
+
+const ExtractedCommentSchema = z.object({
+  content: z.string(),
+  line: z.number(),
+  type: z.string(),
+});
+
+// Inferred types from schemas
+type DbNodeResult = z.infer<typeof DbNodeResultSchema>;
+type DbEdgeResult = z.infer<typeof DbEdgeResultSchema>;
+// Remove this line since FileSystemStructure is now defined as interface above
+type ExtractedFunction = z.infer<typeof ExtractedFunctionSchema>;
+type ExtractedClass = z.infer<typeof ExtractedClassSchema>;
+type ExtractedImport = z.infer<typeof ExtractedImportSchema>;
+type DetectedPattern = z.infer<typeof DetectedPatternSchema>;
+type ExtractedTodo = z.infer<typeof ExtractedTodoSchema>;
+type ChangedFile = z.infer<typeof ChangedFileSchema>;
+type ExtractedComment = z.infer<typeof ExtractedCommentSchema>;
 
 function findProjectRoot(startPath: string = process.cwd()): string {
   let currentPath = path.resolve(startPath);
@@ -387,26 +428,28 @@ export class KnowledgeGraphDB {
         .from(edges)
         .innerJoin(nodes, eq(edges.sourceId, nodes.id))
         .where(eq(edges.targetId, nodeId));
-      results = results.concat(inResults.map((r) => ({
-        node: {
-          id: r.node.id,
-          type: r.node.type,
-          label: r.node.label,
-          properties: r.node.properties ? JSON.parse(r.node.properties as string) : {},
-          createdAt: r.node.createdAt ?? undefined,
-          updatedAt: r.node.updatedAt ?? undefined,
-        } as Node,
-        edge: {
-          id: r.edge.id,
-          sourceId: r.edge.sourceId,
-          targetId: r.edge.targetId,
-          type: r.edge.type,
-          properties: r.edge.properties ? JSON.parse(r.edge.properties as string) : {},
-          weight: r.edge.weight ?? undefined,
-          createdAt: r.edge.createdAt ?? undefined,
-          updatedAt: r.edge.updatedAt ?? undefined,
-        } as Edge,
-      })));
+      results = results.concat(
+        inResults.map((r) => ({
+          node: {
+            id: r.node.id,
+            type: r.node.type,
+            label: r.node.label,
+            properties: r.node.properties ? JSON.parse(r.node.properties as string) : {},
+            createdAt: r.node.createdAt ?? undefined,
+            updatedAt: r.node.updatedAt ?? undefined,
+          } as Node,
+          edge: {
+            id: r.edge.id,
+            sourceId: r.edge.sourceId,
+            targetId: r.edge.targetId,
+            type: r.edge.type,
+            properties: r.edge.properties ? JSON.parse(r.edge.properties as string) : {},
+            weight: r.edge.weight ?? undefined,
+            createdAt: r.edge.createdAt ?? undefined,
+            updatedAt: r.edge.updatedAt ?? undefined,
+          } as Edge,
+        }))
+      );
     }
 
     if (direction === 'out' || direction === 'both') {
@@ -415,26 +458,28 @@ export class KnowledgeGraphDB {
         .from(edges)
         .innerJoin(nodes, eq(edges.targetId, nodes.id))
         .where(eq(edges.sourceId, nodeId));
-      results = results.concat(outResults.map((r) => ({
-        node: {
-          id: r.node.id,
-          type: r.node.type,
-          label: r.node.label,
-          properties: r.node.properties ? JSON.parse(r.node.properties as string) : {},
-          createdAt: r.node.createdAt ?? undefined,
-          updatedAt: r.node.updatedAt ?? undefined,
-        } as Node,
-        edge: {
-          id: r.edge.id,
-          sourceId: r.edge.sourceId,
-          targetId: r.edge.targetId,
-          type: r.edge.type,
-          properties: r.edge.properties ? JSON.parse(r.edge.properties as string) : {},
-          weight: r.edge.weight ?? undefined,
-          createdAt: r.edge.createdAt ?? undefined,
-          updatedAt: r.edge.updatedAt ?? undefined,
-        } as Edge,
-      })));
+      results = results.concat(
+        outResults.map((r) => ({
+          node: {
+            id: r.node.id,
+            type: r.node.type,
+            label: r.node.label,
+            properties: r.node.properties ? JSON.parse(r.node.properties as string) : {},
+            createdAt: r.node.createdAt ?? undefined,
+            updatedAt: r.node.updatedAt ?? undefined,
+          } as Node,
+          edge: {
+            id: r.edge.id,
+            sourceId: r.edge.sourceId,
+            targetId: r.edge.targetId,
+            type: r.edge.type,
+            properties: r.edge.properties ? JSON.parse(r.edge.properties as string) : {},
+            weight: r.edge.weight ?? undefined,
+            createdAt: r.edge.createdAt ?? undefined,
+            updatedAt: r.edge.updatedAt ?? undefined,
+          } as Edge,
+        }))
+      );
     }
 
     return results.map((result) => ({
@@ -442,7 +487,10 @@ export class KnowledgeGraphDB {
         id: result.node.id,
         type: result.node.type,
         label: result.node.label,
-        properties: typeof result.node.properties === 'string' ? JSON.parse(result.node.properties) : (result.node.properties as Record<string, unknown>) || {},
+        properties:
+          typeof result.node.properties === 'string'
+            ? JSON.parse(result.node.properties)
+            : (result.node.properties as Record<string, unknown>) || {},
         createdAt: result.node.createdAt || undefined,
         updatedAt: result.node.updatedAt || undefined,
       },
@@ -451,7 +499,10 @@ export class KnowledgeGraphDB {
         sourceId: result.edge.sourceId,
         targetId: result.edge.targetId,
         type: result.edge.type,
-        properties: typeof result.edge.properties === 'string' ? JSON.parse(result.edge.properties) : (result.edge.properties as Record<string, unknown>) || {},
+        properties:
+          typeof result.edge.properties === 'string'
+            ? JSON.parse(result.edge.properties)
+            : (result.edge.properties as Record<string, unknown>) || {},
         weight: result.edge.weight || undefined,
         createdAt: result.edge.createdAt || undefined,
         updatedAt: result.edge.updatedAt || undefined,
@@ -892,8 +943,11 @@ export class KnowledgeGraphDB {
       const structure = this.buildDirectoryTree(directoryPath, 0, maxDepth, includeFiles);
 
       if (structure && createNodes) {
-        // Create nodes for the directory structure  
-        await this.createDirectoryNodes(structure as FileSystemStructure & Record<string, unknown>, null);
+        // Create nodes for the directory structure
+        await this.createDirectoryNodes(
+          structure as FileSystemStructure & Record<string, unknown>,
+          null
+        );
       }
 
       return structure as unknown as Record<string, unknown>;
@@ -1200,7 +1254,7 @@ export class KnowledgeGraphDB {
       label: structure.name as string,
       properties: {
         path: structure.path,
-        ...(('size' in structure && structure.size) ? { size: structure.size as number } : {}),
+        ...('size' in structure && structure.size ? { size: structure.size as number } : {}),
       },
     });
 
@@ -1212,9 +1266,8 @@ export class KnowledgeGraphDB {
       });
     }
 
-    const structureObj = structure as Record<string, unknown>;
-    if (structureObj.children) {
-      for (const child of (structureObj.children as Record<string, unknown>[]) || []) {
+    if (structure.children && Array.isArray(structure.children)) {
+      for (const child of structure.children) {
         await this.createDirectoryNodes(child, node.id);
       }
     }
@@ -1272,7 +1325,8 @@ export class KnowledgeGraphDB {
 
           // Link to relevant files
           if (pattern.fileNodes) {
-            for (const fileNodeId of (pattern as any).fileNodes || []) {
+            const validatedPattern = DetectedPatternSchema.parse(pattern);
+            for (const fileNodeId of validatedPattern.fileNodes || []) {
               await this.createEdge({
                 sourceId: fileNodeId,
                 targetId: patternNode.id,
@@ -1317,9 +1371,10 @@ export class KnowledgeGraphDB {
       // Create nodes if requested
       if (createNodes) {
         for (const todo of todos) {
+          const validatedTodo = ExtractedTodoSchema.parse(todo);
           const todoNode = await this.createNode({
             type: 'Todo',
-            label: `${(todo as any).type}: ${(todo as any).text.substring(0, 50)}...`,
+            label: `${validatedTodo.type}: ${validatedTodo.text.substring(0, 50)}...`,
             properties: {
               ...todo,
               extractedAt: new Date().toISOString(),
@@ -1429,7 +1484,8 @@ export class KnowledgeGraphDB {
           for (const file of changedFiles) {
             try {
               // Re-analyze changed file
-              await this.analyzeFile((file as any).path, undefined, true);
+              const validatedFile = ChangedFileSchema.parse(file);
+              await this.analyzeFile(validatedFile.path, undefined, true);
               processed++;
             } catch (err) {
               console.error(`Failed to re-analyze ${file.path}:`, err);
@@ -1510,7 +1566,11 @@ export class KnowledgeGraphDB {
   }
 
   // Helper methods for pattern detection
-  private detectDesignPatterns(filePath: string, content: string, language: string): Array<Record<string, unknown>> {
+  private detectDesignPatterns(
+    filePath: string,
+    content: string,
+    language: string
+  ): Array<Record<string, unknown>> {
     const patterns = [];
 
     // Singleton pattern detection
@@ -1621,7 +1681,11 @@ export class KnowledgeGraphDB {
     return patterns;
   }
 
-  private detectCodeSmells(filePath: string, content: string, language: string): Array<Record<string, unknown>> {
+  private detectCodeSmells(
+    filePath: string,
+    content: string,
+    language: string
+  ): Array<Record<string, unknown>> {
     const smells = [];
     const lines = content.split('\n');
 
@@ -2105,5 +2169,13 @@ export class KnowledgeGraphDB {
     } catch (error) {
       console.error('[KnowledgeGraph] Error closing database:', error);
     }
+  }
+
+  // Expose sqlite for testing (only for test environment)
+  getSqliteForTesting(): Database.Database {
+    if (process.env.NODE_ENV === 'test') {
+      return this.sqlite;
+    }
+    throw new Error('SQLite access only available in test environment');
   }
 }
