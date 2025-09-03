@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { and, desc, eq, like, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, like } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { v4 as uuidv4 } from 'uuid';
@@ -153,7 +153,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Creates a new instance of KnowledgeGraphDB.
-   * 
+   *
    * @param dbPath Optional path to the SQLite database file. If not provided,
    *               will attempt to locate the database using various strategies.
    */
@@ -299,7 +299,7 @@ export class KnowledgeGraphDB {
   private migrateToVectorSearch() {
     try {
       // Check if embedding column exists in nodes table
-      const nodesInfo = this.sqlite.prepare("PRAGMA table_info(nodes)").all() as Array<{
+      const nodesInfo = this.sqlite.prepare('PRAGMA table_info(nodes)').all() as Array<{
         cid: number;
         name: string;
         type: string;
@@ -308,8 +308,8 @@ export class KnowledgeGraphDB {
         pk: number;
       }>;
 
-      const hasEmbeddingColumn = nodesInfo.some(col => col.name === 'embedding');
-      const hasEmbeddingModelColumn = nodesInfo.some(col => col.name === 'embedding_model');
+      const hasEmbeddingColumn = nodesInfo.some((col) => col.name === 'embedding');
+      const hasEmbeddingModelColumn = nodesInfo.some((col) => col.name === 'embedding_model');
 
       if (!hasEmbeddingColumn) {
         console.error('[KnowledgeGraph] Adding embedding column to nodes table');
@@ -322,7 +322,7 @@ export class KnowledgeGraphDB {
       }
 
       // Check if embedding columns exist in edges table
-      const edgesInfo = this.sqlite.prepare("PRAGMA table_info(edges)").all() as Array<{
+      const edgesInfo = this.sqlite.prepare('PRAGMA table_info(edges)').all() as Array<{
         cid: number;
         name: string;
         type: string;
@@ -331,8 +331,8 @@ export class KnowledgeGraphDB {
         pk: number;
       }>;
 
-      const edgeHasEmbeddingColumn = edgesInfo.some(col => col.name === 'embedding');
-      const edgeHasEmbeddingModelColumn = edgesInfo.some(col => col.name === 'embedding_model');
+      const edgeHasEmbeddingColumn = edgesInfo.some((col) => col.name === 'embedding');
+      const edgeHasEmbeddingModelColumn = edgesInfo.some((col) => col.name === 'embedding_model');
 
       if (!edgeHasEmbeddingColumn) {
         console.error('[KnowledgeGraph] Adding embedding column to edges table');
@@ -347,38 +347,35 @@ export class KnowledgeGraphDB {
       console.error('[KnowledgeGraph] Vector search schema migration completed successfully');
     } catch (error) {
       console.error('[KnowledgeGraph] Schema migration failed:', error);
-      throw new Error(`Failed to migrate database schema: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to migrate database schema: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   // Initialize vector search extensions
   private initializeVectorExtensions() {
-    try {
-      // Try to load sqlite-vec extension
-      this.sqlite.loadExtension('vec');
-      console.error('[KnowledgeGraph] Loaded vec extension for vector search');
-      this.vectorExtensionAvailable = true;
-    } catch (error) {
-      try {
-        // Try alternative vector extension paths
-        this.sqlite.loadExtension('sqlite-vec');
-        console.error('[KnowledgeGraph] Loaded sqlite-vec extension');
-        this.vectorExtensionAvailable = true;
-      } catch (error2) {
-        console.error('[KnowledgeGraph] No vector extension available, using JavaScript implementation');
-        this.vectorExtensionAvailable = false;
-      }
-    }
+    // Note: Vector extensions like sqlite-vec can be added for production use
+    // For now, we use the JavaScript implementation which works well for most use cases
+    //
+    // To add native vector support in the future:
+    // 1. Install sqlite-vec or vectorlite extension
+    // 2. Uncomment the code below and update the extension loading logic
+    //
+    // try {
+    //   this.sqlite.loadExtension('vec');
+    //   console.error('[KnowledgeGraph] Loaded vec extension for vector search');
+    //   this.vectorExtensionAvailable = true;
+    // } catch (error) {
+    //   console.error('[KnowledgeGraph] No vector extension available, using JavaScript implementation');
+    //   this.vectorExtensionAvailable = false;
+    // }
+
+    this.vectorExtensionAvailable = false;
+    console.error('[KnowledgeGraph] Using JavaScript-based vector search implementation');
   }
 
   // Node operations
-  /**
-   * Creates a new node in the knowledge graph.
-   * 
-   * @param data The node data including type, label, and optional properties
-   * @returns Promise resolving to the created node with generated ID
-   * @throws Error if node creation fails
-   */
   async createNode(data: CreateNode): Promise<Node> {
     const id = uuidv4();
     const node = {
@@ -419,7 +416,7 @@ export class KnowledgeGraphDB {
       similarityThreshold = 0.8,
       matchFields = ['type', 'label'],
       useVectorSimilarity = true,
-      embeddingModel = 'simple'
+      embeddingModel = 'simple',
     } = options;
 
     let candidates: Node[] = [];
@@ -429,7 +426,7 @@ export class KnowledgeGraphDB {
       try {
         candidates = await this.hybridSimilaritySearch(data, {
           threshold: similarityThreshold,
-          model: embeddingModel
+          model: embeddingModel,
         });
       } catch (error) {
         console.error('[VectorSearch] Hybrid search failed, falling back to traditional:', error);
@@ -447,7 +444,10 @@ export class KnowledgeGraphDB {
       try {
         await this.generateNodeEmbedding(node.id, embeddingModel);
       } catch (error) {
-        console.error(`[VectorSearch] Failed to generate embedding for new node ${node.id}:`, error);
+        console.error(
+          `[VectorSearch] Failed to generate embedding for new node ${node.id}:`,
+          error
+        );
       }
 
       return { node, action: 'created' };
@@ -459,33 +459,40 @@ export class KnowledgeGraphDB {
       case 'skip':
         return { node: bestMatch, action: 'skipped' };
 
-      case 'update':
+      case 'update': {
         const updated = await this.updateNode(bestMatch.id, {
           label: data.label,
-          properties: data.properties
+          properties: data.properties,
         });
 
         // Regenerate embedding after update
         try {
           await this.generateNodeEmbedding(bestMatch.id, embeddingModel);
         } catch (error) {
-          console.error(`[VectorSearch] Failed to regenerate embedding for updated node ${bestMatch.id}:`, error);
+          console.error(
+            `[VectorSearch] Failed to regenerate embedding for updated node ${bestMatch.id}:`,
+            error
+          );
         }
 
-        return { node: updated!, action: 'merged' };
-
-      case 'merge':
-      default:
+        if (!updated) throw new Error('Failed to update node');
+        return { node: updated, action: 'merged' };
+      }
+      default: {
         const merged = await this.mergeNodeProperties(bestMatch.id, data);
 
         // Regenerate embedding after merge
         try {
           await this.generateNodeEmbedding(bestMatch.id, embeddingModel);
         } catch (error) {
-          console.error(`[VectorSearch] Failed to regenerate embedding for merged node ${bestMatch.id}:`, error);
+          console.error(
+            `[VectorSearch] Failed to regenerate embedding for merged node ${bestMatch.id}:`,
+            error
+          );
         }
 
         return { node: merged, action: 'merged' };
+      }
     }
   }
 
@@ -573,7 +580,7 @@ export class KnowledgeGraphDB {
 
     const updated = await this.updateNode(nodeId, {
       label: newData.label, // Update label to the newer one
-      properties: mergedProperties
+      properties: mergedProperties,
     });
 
     return updated!;
@@ -635,7 +642,7 @@ export class KnowledgeGraphDB {
   // Simple embedding generation using character frequencies and n-grams
   private generateSimpleEmbedding(text: string): number[] {
     const normalizedText = text.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-    const words = normalizedText.split(/\s+/).filter(w => w.length > 0);
+    const words = normalizedText.split(/\s+/).filter((w) => w.length > 0);
 
     // Create a 100-dimensional embedding vector
     const dimension = 100;
@@ -644,9 +651,11 @@ export class KnowledgeGraphDB {
     // Character frequency features
     for (let i = 0; i < normalizedText.length; i++) {
       const char = normalizedText.charCodeAt(i);
-      if (char >= 97 && char <= 122) { // a-z
+      if (char >= 97 && char <= 122) {
+        // a-z
         embedding[char - 97] += 1;
-      } else if (char >= 48 && char <= 57) { // 0-9
+      } else if (char >= 48 && char <= 57) {
+        // 0-9
         embedding[26 + (char - 48)] += 1;
       }
     }
@@ -671,7 +680,7 @@ export class KnowledgeGraphDB {
 
     // Normalize the embedding vector
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    return magnitude > 0 ? embedding.map(val => val / magnitude) : embedding;
+    return magnitude > 0 ? embedding.map((val) => val / magnitude) : embedding;
   }
 
   // Simple hash function for string features
@@ -679,7 +688,7 @@ export class KnowledgeGraphDB {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -709,11 +718,7 @@ export class KnowledgeGraphDB {
     if (!node) throw new Error(`Node ${nodeId} not found`);
 
     // Create embedding text from node data
-    const embeddingText = [
-      node.type,
-      node.label,
-      JSON.stringify(node.properties || {})
-    ].join(' ');
+    const embeddingText = [node.type, node.label, JSON.stringify(node.properties || {})].join(' ');
 
     const embedding = await this.generateEmbedding(embeddingText, model);
 
@@ -721,7 +726,7 @@ export class KnowledgeGraphDB {
       .update(nodes)
       .set({
         embedding: JSON.stringify(embedding),
-        embeddingModel: model
+        embeddingModel: model,
       })
       .where(eq(nodes.id, nodeId));
   }
@@ -740,7 +745,7 @@ export class KnowledgeGraphDB {
       edge.type,
       sourceNode?.label || '',
       targetNode?.label || '',
-      JSON.stringify(edge.properties || {})
+      JSON.stringify(edge.properties || {}),
     ].join(' ');
 
     const embedding = await this.generateEmbedding(embeddingText, model);
@@ -749,7 +754,7 @@ export class KnowledgeGraphDB {
       .update(edges)
       .set({
         embedding: JSON.stringify(embedding),
-        embeddingModel: model
+        embeddingModel: model,
       })
       .where(eq(edges.id, edgeId));
   }
@@ -764,12 +769,7 @@ export class KnowledgeGraphDB {
       nodeTypes?: string[];
     } = {}
   ): Promise<Array<{ node: Node; similarity: number }>> {
-    const {
-      limit = 20,
-      threshold = 0.1,
-      model = 'simple',
-      nodeTypes = []
-    } = options;
+    const { limit = 20, threshold = 0.1, model = 'simple', nodeTypes = [] } = options;
 
     // Generate query embedding
     const queryEmbedding = await this.generateEmbedding(query, model);
@@ -804,16 +804,11 @@ export class KnowledgeGraphDB {
 
           results.push({ node, similarity });
         }
-      } catch (error) {
-        // Skip nodes with invalid embeddings
-        continue;
-      }
+      } catch (error) {}
     }
 
     // Sort by similarity (highest first) and limit results
-    return results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, limit);
+    return results.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
   }
 
   // Enhanced similarity matching using both traditional and vector similarity
@@ -830,7 +825,7 @@ export class KnowledgeGraphDB {
       vectorWeight = 0.6,
       traditionalWeight = 0.4,
       threshold = 0.7,
-      model = 'simple'
+      model = 'simple',
     } = options;
 
     // Get traditional similarity results
@@ -875,13 +870,13 @@ export class KnowledgeGraphDB {
     }
 
     // Sort by similarity and return nodes
-    return hybridResults
-      .sort((a, b) => b.similarity - a.similarity)
-      .map(result => result.node);
+    return hybridResults.sort((a, b) => b.similarity - a.similarity).map((result) => result.node);
   }
 
   // Batch generate embeddings for all nodes without embeddings
-  async generateMissingEmbeddings(model = 'simple'): Promise<{ processed: number; errors: number }> {
+  async generateMissingEmbeddings(
+    model = 'simple'
+  ): Promise<{ processed: number; errors: number }> {
     let processed = 0;
     let errors = 0;
 
@@ -891,7 +886,9 @@ export class KnowledgeGraphDB {
       .from(nodes)
       .where(isNull(nodes.embedding));
 
-    console.error(`[VectorSearch] Generating embeddings for ${nodesWithoutEmbeddings.length} nodes...`);
+    console.error(
+      `[VectorSearch] Generating embeddings for ${nodesWithoutEmbeddings.length} nodes...`
+    );
 
     for (const node of nodesWithoutEmbeddings) {
       try {
@@ -899,7 +896,9 @@ export class KnowledgeGraphDB {
         processed++;
 
         if (processed % 100 === 0) {
-          console.error(`[VectorSearch] Processed ${processed}/${nodesWithoutEmbeddings.length} nodes`);
+          console.error(
+            `[VectorSearch] Processed ${processed}/${nodesWithoutEmbeddings.length} nodes`
+          );
         }
       } catch (error) {
         console.error(`[VectorSearch] Failed to generate embedding for node ${node.id}:`, error);
@@ -913,7 +912,9 @@ export class KnowledgeGraphDB {
       .from(edges)
       .where(isNull(edges.embedding));
 
-    console.error(`[VectorSearch] Generating embeddings for ${edgesWithoutEmbeddings.length} edges...`);
+    console.error(
+      `[VectorSearch] Generating embeddings for ${edgesWithoutEmbeddings.length} edges...`
+    );
 
     for (const edge of edgesWithoutEmbeddings) {
       try {
@@ -929,13 +930,15 @@ export class KnowledgeGraphDB {
       }
     }
 
-    console.error(`[VectorSearch] Embedding generation complete. Processed: ${processed}, Errors: ${errors}`);
+    console.error(
+      `[VectorSearch] Embedding generation complete. Processed: ${processed}, Errors: ${errors}`
+    );
     return { processed, errors };
   }
 
   /**
    * Retrieves a node by its ID.
-   * 
+   *
    * @param id The unique identifier of the node
    * @returns Promise resolving to the node if found, null otherwise
    */
@@ -957,7 +960,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Queries nodes based on filtering criteria.
-   * 
+   *
    * @param query Query parameters including optional filters for type, label, limit, and offset
    * @returns Promise resolving to array of matching nodes
    */
@@ -997,7 +1000,7 @@ export class KnowledgeGraphDB {
   // Edge operations
   /**
    * Creates a new edge (relationship) between two nodes in the knowledge graph.
-   * 
+   *
    * @param data The edge data including sourceId, targetId, type, and optional properties/weight
    * @returns Promise resolving to the created edge with generated ID
    * @throws Error if source or target nodes don't exist or if edge creation fails
@@ -1042,7 +1045,7 @@ export class KnowledgeGraphDB {
     const existingEdges = await this.queryEdges({
       sourceId: data.sourceId,
       targetId: data.targetId,
-      type: data.type // Always filter by type initially
+      type: data.type, // Always filter by type initially
     });
 
     if (existingEdges.length === 0) {
@@ -1051,38 +1054,37 @@ export class KnowledgeGraphDB {
         // When multiple types are allowed, just create the new edge
         const edge = await this.createEdge(data);
         return { edge, action: 'created' };
-      } else {
-        // When multiple types are not allowed, check for any edge between nodes
-        const anyExistingEdges = await this.queryEdges({
-          sourceId: data.sourceId,
-          targetId: data.targetId
-        });
-        
-        if (anyExistingEdges.length === 0) {
-          // No edge at all, create new one
-          const edge = await this.createEdge(data);
-          return { edge, action: 'created' };
+      }
+      // When multiple types are not allowed, check for any edge between nodes
+      const anyExistingEdges = await this.queryEdges({
+        sourceId: data.sourceId,
+        targetId: data.targetId,
+      });
+
+      if (anyExistingEdges.length === 0) {
+        // No edge at all, create new one
+        const edge = await this.createEdge(data);
+        return { edge, action: 'created' };
+      }
+
+      // Use first existing edge as best match for merging
+      const bestMatch = anyExistingEdges[0];
+
+      switch (mergeStrategy) {
+        case 'skip':
+          return { edge: bestMatch, action: 'skipped' };
+
+        case 'update': {
+          const updated = await this.updateEdge(bestMatch.id, {
+            type: data.type,
+            properties: data.properties,
+            weight: data.weight,
+          });
+          return { edge: updated!, action: 'merged' };
         }
-        
-        // Use first existing edge as best match for merging
-        const bestMatch = anyExistingEdges[0];
-        
-        switch (mergeStrategy) {
-          case 'skip':
-            return { edge: bestMatch, action: 'skipped' };
-            
-          case 'update':
-            const updated = await this.updateEdge(bestMatch.id, {
-              type: data.type,
-              properties: data.properties,
-              weight: data.weight
-            });
-            return { edge: updated!, action: 'merged' };
-            
-          case 'merge':
-          default:
-            const merged = await this.mergeEdgeProperties(bestMatch.id, data);
-            return { edge: merged, action: 'merged' };
+        default: {
+          const merged = await this.mergeEdgeProperties(bestMatch.id, data);
+          return { edge: merged, action: 'merged' };
         }
       }
     }
@@ -1094,18 +1096,18 @@ export class KnowledgeGraphDB {
       case 'skip':
         return { edge: bestMatch, action: 'skipped' };
 
-      case 'update':
+      case 'update': {
         const updated = await this.updateEdge(bestMatch.id, {
           type: data.type,
           properties: data.properties,
-          weight: data.weight
+          weight: data.weight,
         });
         return { edge: updated!, action: 'merged' };
-
-      case 'merge':
-      default:
+      }
+      default: {
         const merged = await this.mergeEdgeProperties(bestMatch.id, data);
         return { edge: merged, action: 'merged' };
+      }
     }
   }
 
@@ -1130,7 +1132,7 @@ export class KnowledgeGraphDB {
     const updated = await this.updateEdge(edgeId, {
       type: newData.type, // Use the newer type
       properties: mergedProperties,
-      weight: mergedWeight
+      weight: mergedWeight,
     });
 
     return updated!;
@@ -1138,7 +1140,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Retrieves an edge by its ID.
-   * 
+   *
    * @param id The unique identifier of the edge
    * @returns Promise resolving to the edge if found, null otherwise
    */
@@ -1162,7 +1164,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Queries edges based on filtering criteria.
-   * 
+   *
    * @param query Query parameters including optional filters for sourceId, targetId, type, limit, and offset
    * @returns Promise resolving to array of matching edges
    */
@@ -1205,7 +1207,7 @@ export class KnowledgeGraphDB {
   // Graph traversal
   /**
    * Gets neighboring nodes connected to a given node.
-   * 
+   *
    * @param nodeId The ID of the central node
    * @param direction Direction of edges to follow: 'in' (incoming), 'out' (outgoing), or 'both'
    * @returns Promise resolving to array of neighbor nodes with their connecting edges
@@ -1307,7 +1309,7 @@ export class KnowledgeGraphDB {
   // Update operations
   /**
    * Updates an existing node with new data.
-   * 
+   *
    * @param id The unique identifier of the node to update
    * @param updates Object containing the fields to update (label and/or properties)
    * @returns Promise resolving to the updated node if found, null otherwise
@@ -1338,7 +1340,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Updates an existing edge with new data.
-   * 
+   *
    * @param id The unique identifier of the edge to update
    * @param updates Object containing the fields to update (type, properties, and/or weight)
    * @returns Promise resolving to the updated edge if found, null otherwise
@@ -1371,7 +1373,7 @@ export class KnowledgeGraphDB {
   // Delete operations
   /**
    * Deletes a node and all its connected edges from the knowledge graph.
-   * 
+   *
    * @param id The unique identifier of the node to delete
    * @returns Promise resolving to an object with count of deleted edges, or null if node not found
    */
@@ -1391,7 +1393,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Deletes an edge from the knowledge graph.
-   * 
+   *
    * @param id The unique identifier of the edge to delete
    * @returns Promise resolving to the deleted edge if found, null otherwise
    */
@@ -1463,22 +1465,17 @@ export class KnowledgeGraphDB {
       confidence: number;
     };
   }> {
-    const {
-      includeRelated = true,
-      relationshipDepth = 2,
-      contextTypes = [],
-      limit = 20
-    } = options;
+    const { includeRelated = true, relationshipDepth = 2, contextTypes = [], limit = 20 } = options;
 
     // Find direct matches
     const directMatches = await this.searchNodes(query, { limit, types: contextTypes });
 
-    let relatedNodes: { node: Node; relationship: string; distance: number }[] = [];
+    const relatedNodes: { node: Node; relationship: string; distance: number }[] = [];
 
     if (includeRelated && directMatches.length > 0) {
       // Get related nodes within specified depth
       const visited = new Set<string>();
-      const queue = directMatches.map(n => ({ node: n, distance: 0, relationship: 'direct' }));
+      const queue = directMatches.map((n) => ({ node: n, distance: 0, relationship: 'direct' }));
 
       while (queue.length > 0 && relatedNodes.length < limit * 2) {
         const current = queue.shift()!;
@@ -1493,7 +1490,7 @@ export class KnowledgeGraphDB {
           relatedNodes.push({
             node: current.node,
             relationship: current.relationship,
-            distance: current.distance
+            distance: current.distance,
           });
         }
 
@@ -1504,7 +1501,7 @@ export class KnowledgeGraphDB {
             queue.push({
               node: neighbor,
               distance: current.distance + 1,
-              relationship: edge.type
+              relationship: edge.type,
             });
           }
         }
@@ -1512,7 +1509,7 @@ export class KnowledgeGraphDB {
     }
 
     // Generate summary
-    const allNodes = [...directMatches, ...relatedNodes.map(r => r.node)];
+    const allNodes = [...directMatches, ...relatedNodes.map((r) => r.node)];
     const nodeTypes: Record<string, number> = {};
     const relationships = new Set<string>();
 
@@ -1528,13 +1525,13 @@ export class KnowledgeGraphDB {
       totalNodes: allNodes.length,
       nodeTypes,
       keyRelationships: Array.from(relationships),
-      confidence: directMatches.length / Math.max(limit, 1)
+      confidence: directMatches.length / Math.max(limit, 1),
     };
 
     return {
       directMatches,
       relatedNodes: relatedNodes.slice(0, limit),
-      summary
+      summary,
     };
   }
 
@@ -1567,11 +1564,12 @@ export class KnowledgeGraphDB {
       includeProperties = true,
       includeNeighbors = true,
       neighborDepth = 1,
-      includeMetadata = true
+      includeMetadata = true,
     } = options;
 
     const results = [];
-    const allConnections: Array<{ fromId: string; toId: string; weight: number; type: string }> = [];
+    const allConnections: Array<{ fromId: string; toId: string; weight: number; type: string }> =
+      [];
 
     for (const nodeId of nodeIds) {
       const node = await this.getNode(nodeId);
@@ -1584,7 +1582,7 @@ export class KnowledgeGraphDB {
         nodeResult.neighbors = neighbors.map(({ node: n, edge }) => ({
           node: n,
           edge,
-          direction: edge.sourceId === nodeId ? 'out' : 'in' as 'in' | 'out'
+          direction: edge.sourceId === nodeId ? 'out' : ('in' as 'in' | 'out'),
         }));
 
         // Collect connection data
@@ -1593,14 +1591,15 @@ export class KnowledgeGraphDB {
             fromId: edge.sourceId,
             toId: edge.targetId,
             weight: edge.weight || 1,
-            type: edge.type
+            type: edge.type,
           });
         }
       }
 
       if (includeMetadata) {
-        const connectionCount = includeNeighbors ? nodeResult.neighbors.length :
-          (await this.getNeighbors(nodeId, 'both')).length;
+        const connectionCount = includeNeighbors
+          ? nodeResult.neighbors.length
+          : (await this.getNeighbors(nodeId, 'both')).length;
 
         // Simple centrality score based on connections
         const centralityScore = connectionCount / Math.max(nodeIds.length, 1);
@@ -1608,7 +1607,7 @@ export class KnowledgeGraphDB {
         nodeResult.metadata = {
           connectionCount,
           centralityScore,
-          lastActivity: node.updatedAt
+          lastActivity: node.updatedAt,
         };
       }
 
@@ -1616,9 +1615,7 @@ export class KnowledgeGraphDB {
     }
 
     // Find strongest connections
-    const strongestConnections = allConnections
-      .sort((a, b) => b.weight - a.weight)
-      .slice(0, 10);
+    const strongestConnections = allConnections.sort((a, b) => b.weight - a.weight).slice(0, 10);
 
     // Generate cluster info
     const nodeTypeGroups = new Map<string, string[]>();
@@ -1627,7 +1624,7 @@ export class KnowledgeGraphDB {
       if (!nodeTypeGroups.has(type)) {
         nodeTypeGroups.set(type, []);
       }
-      nodeTypeGroups.get(type)!.push(result.node.id);
+      nodeTypeGroups.get(type)?.push(result.node.id);
     }
 
     const clusterInfo = Array.from(nodeTypeGroups.entries()).map(
@@ -1639,8 +1636,8 @@ export class KnowledgeGraphDB {
       networkSummary: {
         totalConnections: allConnections.length,
         strongestConnections,
-        clusterInfo
-      }
+        clusterInfo,
+      },
     };
   }
 
@@ -1723,7 +1720,7 @@ export class KnowledgeGraphDB {
 
   /**
    * Extracts a subgraph centered around specified nodes up to a certain depth.
-   * 
+   *
    * @param centerNodeIds Array of node IDs to use as subgraph centers
    * @param depth Maximum depth to traverse from center nodes (default: 2)
    * @param includeEdgeTypes Optional array of edge types to include in traversal

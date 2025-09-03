@@ -13,20 +13,20 @@ import {
   QueryNodesSchema,
 } from './types/schema.js';
 import {
-  validateVectorSearchRequest,
-  validateHybridSearchRequest,
-  validateSmartMergeRequest,
-  validateContextualInfoRequest,
-  validateRichContextRequest,
-  validateSimilarityAnalysisRequest,
-  VectorSearchRequestSchema,
-  HybridSearchRequestSchema,
-  SmartNodeMergeRequestSchema,
-  SmartEdgeMergeRequestSchema,
   ContextualInfoRequestSchema,
+  EmbeddingGenerationOptionsSchema,
+  HybridSearchRequestSchema,
   RichContextRequestSchema,
   SimilarityAnalysisRequestSchema,
-  EmbeddingGenerationOptionsSchema,
+  SmartEdgeMergeRequestSchema,
+  SmartNodeMergeRequestSchema,
+  VectorSearchRequestSchema,
+  validateContextualInfoRequest,
+  validateHybridSearchRequest,
+  validateRichContextRequest,
+  validateSimilarityAnalysisRequest,
+  validateSmartMergeRequest,
+  validateVectorSearchRequest,
 } from './types/vector-schemas.js';
 
 class KnowledgeGraphMCPServer {
@@ -526,7 +526,8 @@ class KnowledgeGraphMCPServer {
           },
           {
             name: 'create_or_merge_node',
-            description: 'Create a new node or merge with existing similar nodes to avoid duplicates',
+            description:
+              'Create a new node or merge with existing similar nodes to avoid duplicates',
             inputSchema: {
               type: 'object',
               properties: {
@@ -537,19 +538,19 @@ class KnowledgeGraphMCPServer {
                   type: 'string',
                   enum: ['skip', 'update', 'merge'],
                   description: 'How to handle existing similar nodes',
-                  default: 'merge'
+                  default: 'merge',
                 },
                 similarityThreshold: {
                   type: 'number',
                   description: 'Similarity threshold (0-1) for matching',
-                  default: 0.8
+                  default: 0.8,
                 },
                 matchFields: {
                   type: 'array',
                   items: { type: 'string', enum: ['type', 'label', 'properties'] },
                   description: 'Fields to use for similarity matching',
-                  default: ['type', 'label']
-                }
+                  default: ['type', 'label'],
+                },
               },
               required: ['type', 'label'],
             },
@@ -569,20 +570,21 @@ class KnowledgeGraphMCPServer {
                   type: 'string',
                   enum: ['skip', 'update', 'merge'],
                   description: 'How to handle existing edges',
-                  default: 'merge'
+                  default: 'merge',
                 },
                 allowMultipleTypes: {
                   type: 'boolean',
                   description: 'Allow multiple edge types between same nodes',
-                  default: false
-                }
+                  default: false,
+                },
               },
               required: ['sourceId', 'targetId', 'type'],
             },
           },
           {
             name: 'get_contextual_information',
-            description: 'Get rich contextual information for LLM collaboration, including related nodes and relationships',
+            description:
+              'Get rich contextual information for LLM collaboration, including related nodes and relationships',
             inputSchema: {
               type: 'object',
               properties: {
@@ -590,23 +592,23 @@ class KnowledgeGraphMCPServer {
                 includeRelated: {
                   type: 'boolean',
                   description: 'Include related nodes',
-                  default: true
+                  default: true,
                 },
                 relationshipDepth: {
                   type: 'number',
                   description: 'Depth of relationships to explore',
-                  default: 2
+                  default: 2,
                 },
                 contextTypes: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Node types to focus on for context'
+                  description: 'Node types to focus on for context',
                 },
                 limit: {
                   type: 'number',
                   description: 'Maximum number of results',
-                  default: 20
-                }
+                  default: 20,
+                },
               },
               required: ['query'],
             },
@@ -620,88 +622,92 @@ class KnowledgeGraphMCPServer {
                 nodeIds: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Node IDs to get rich context for'
+                  description: 'Node IDs to get rich context for',
                 },
                 includeProperties: {
                   type: 'boolean',
                   description: 'Include node properties in context',
-                  default: true
+                  default: true,
                 },
                 includeNeighbors: {
                   type: 'boolean',
                   description: 'Include neighboring nodes',
-                  default: true
+                  default: true,
                 },
                 neighborDepth: {
                   type: 'number',
                   description: 'Depth of neighbor relationships',
-                  default: 1
+                  default: 1,
                 },
                 includeMetadata: {
                   type: 'boolean',
                   description: 'Include metadata like connection counts and centrality',
-                  default: true
-                }
+                  default: true,
+                },
               },
               required: ['nodeIds'],
             },
           },
           {
             name: 'vector_search_nodes',
-            description: 'Semantic search using vector embeddings for incredibly fast and accurate results',
+            description:
+              'Semantic search using vector embeddings for incredibly fast and accurate results',
             inputSchema: {
               type: 'object',
               properties: {
                 query: {
                   type: 'string',
-                  description: 'Natural language search query'
+                  description: 'Natural language search query',
                 },
                 limit: {
                   type: 'number',
                   description: 'Maximum number of results',
-                  default: 20
+                  default: 20,
                 },
                 threshold: {
                   type: 'number',
                   description: 'Minimum similarity threshold (0-1)',
-                  default: 0.1
+                  default: 0.1,
                 },
                 model: {
                   type: 'string',
                   description: 'Embedding model to use',
-                  default: 'simple'
+                  default: 'simple',
                 },
                 nodeTypes: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Filter by specific node types'
-                }
+                  description: 'Filter by specific node types',
+                },
               },
               required: ['query'],
             },
           },
           {
             name: 'generate_embeddings',
-            description: 'Generate vector embeddings for nodes without embeddings (batch operation)',
+            description:
+              'Generate vector embeddings for nodes without embeddings (batch operation)',
             inputSchema: {
               type: 'object',
               properties: {
                 model: {
                   type: 'string',
                   description: 'Embedding model to use for generation',
-                  default: 'simple'
+                  default: 'simple',
                 },
                 nodeIds: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Specific node IDs to generate embeddings for (optional - if not provided, generates for all nodes without embeddings)'
-                }
+                  description:
+                    'Specific node IDs to generate embeddings for (optional - if not provided, generates for all nodes without embeddings)',
+                },
               },
             },
           },
           {
             name: 'hybrid_similarity_search',
-            description: 'Advanced search combining traditional and vector similarity for best results',
+            description:
+              'Advanced search combining traditional and vector similarity for best results',
             inputSchema: {
               type: 'object',
               properties: {
@@ -711,23 +717,23 @@ class KnowledgeGraphMCPServer {
                 vectorWeight: {
                   type: 'number',
                   description: 'Weight for vector similarity (0-1)',
-                  default: 0.6
+                  default: 0.6,
                 },
                 traditionalWeight: {
                   type: 'number',
                   description: 'Weight for traditional similarity (0-1)',
-                  default: 0.4
+                  default: 0.4,
                 },
                 threshold: {
                   type: 'number',
                   description: 'Overall similarity threshold (0-1)',
-                  default: 0.7
+                  default: 0.7,
                 },
                 model: {
                   type: 'string',
                   description: 'Embedding model to use',
-                  default: 'simple'
-                }
+                  default: 'simple',
+                },
               },
               required: ['type', 'label'],
             },
@@ -742,13 +748,13 @@ class KnowledgeGraphMCPServer {
                   type: 'array',
                   items: { type: 'string' },
                   description: 'Node IDs to analyze for similarity',
-                  minItems: 2
+                  minItems: 2,
                 },
                 model: {
                   type: 'string',
                   description: 'Embedding model to use',
-                  default: 'simple'
-                }
+                  default: 'simple',
+                },
               },
               required: ['nodeIds'],
             },
@@ -1286,17 +1292,17 @@ class KnowledgeGraphMCPServer {
             const validatedArgs = validateSmartMergeRequest(args);
 
             const result = await this.db.createOrMergeNode(
-              { 
-                type: validatedArgs.type, 
-                label: validatedArgs.label, 
-                properties: validatedArgs.properties 
+              {
+                type: validatedArgs.type,
+                label: validatedArgs.label,
+                properties: validatedArgs.properties,
               },
-              { 
-                mergeStrategy: validatedArgs.mergeStrategy, 
-                similarityThreshold: validatedArgs.similarityThreshold, 
+              {
+                mergeStrategy: validatedArgs.mergeStrategy,
+                similarityThreshold: validatedArgs.similarityThreshold,
                 matchFields: validatedArgs.matchFields,
                 useVectorSimilarity: validatedArgs.useVectorSimilarity,
-                embeddingModel: validatedArgs.embeddingModel
+                embeddingModel: validatedArgs.embeddingModel,
               }
             );
 
@@ -1314,16 +1320,16 @@ class KnowledgeGraphMCPServer {
             const validatedArgs = SmartEdgeMergeRequestSchema.parse(args);
 
             const result = await this.db.createOrMergeEdge(
-              { 
-                sourceId: validatedArgs.sourceId, 
-                targetId: validatedArgs.targetId, 
-                type: validatedArgs.type, 
-                properties: validatedArgs.properties, 
-                weight: validatedArgs.weight 
+              {
+                sourceId: validatedArgs.sourceId,
+                targetId: validatedArgs.targetId,
+                type: validatedArgs.type,
+                properties: validatedArgs.properties,
+                weight: validatedArgs.weight,
               },
-              { 
-                mergeStrategy: validatedArgs.mergeStrategy, 
-                allowMultipleTypes: validatedArgs.allowMultipleTypes 
+              {
+                mergeStrategy: validatedArgs.mergeStrategy,
+                allowMultipleTypes: validatedArgs.allowMultipleTypes,
               }
             );
 
@@ -1344,7 +1350,7 @@ class KnowledgeGraphMCPServer {
               includeRelated: validatedArgs.includeRelated,
               relationshipDepth: validatedArgs.relationshipDepth,
               contextTypes: validatedArgs.contextTypes,
-              limit: validatedArgs.limit
+              limit: validatedArgs.limit,
             });
 
             return {
@@ -1364,7 +1370,7 @@ class KnowledgeGraphMCPServer {
               includeProperties: validatedArgs.includeProperties,
               includeNeighbors: validatedArgs.includeNeighbors,
               neighborDepth: validatedArgs.neighborDepth,
-              includeMetadata: validatedArgs.includeMetadata
+              includeMetadata: validatedArgs.includeMetadata,
             });
 
             return {
@@ -1379,21 +1385,24 @@ class KnowledgeGraphMCPServer {
 
           case 'vector_search_nodes': {
             const validatedArgs = validateVectorSearchRequest(args);
-            
+
             const results = await this.db.vectorSearchNodes(validatedArgs.query, {
               limit: validatedArgs.limit,
               threshold: validatedArgs.threshold,
               model: validatedArgs.model,
-              nodeTypes: validatedArgs.nodeTypes
+              nodeTypes: validatedArgs.nodeTypes,
             });
 
             return {
               content: [
                 {
                   type: 'text',
-                                    text: `Vector search results for "${validatedArgs.query}" (${results.length} matches):\n\n${results.map(({ node, similarity }) => 
-                    `Similarity: ${(similarity * 100).toFixed(1)}% - ${node.type}: ${node.label}\nID: ${node.id}\nProperties: ${JSON.stringify(node.properties, null, 2)}`
-                  ).join('\n\n---\n\n')}`,
+                  text: `Vector search results for "${validatedArgs.query}" (${results.length} matches):\n\n${results
+                    .map(
+                      ({ node, similarity }) =>
+                        `Similarity: ${(similarity * 100).toFixed(1)}% - ${node.type}: ${node.label}\nID: ${node.id}\nProperties: ${JSON.stringify(node.properties, null, 2)}`
+                    )
+                    .join('\n\n---\n\n')}`,
                 },
               ],
             };
@@ -1402,11 +1411,11 @@ class KnowledgeGraphMCPServer {
           case 'generate_embeddings': {
             const validatedArgs = EmbeddingGenerationOptionsSchema.parse(args);
 
-                        if (validatedArgs.nodeIds && validatedArgs.nodeIds.length > 0) {
+            if (validatedArgs.nodeIds && validatedArgs.nodeIds.length > 0) {
               // Generate embeddings for specific nodes
               let processed = 0;
               let errors = 0;
-              
+
               for (const nodeId of validatedArgs.nodeIds) {
                 try {
                   await this.db.generateNodeEmbedding(nodeId, validatedArgs.model);
@@ -1415,7 +1424,7 @@ class KnowledgeGraphMCPServer {
                   errors++;
                 }
               }
-              
+
               return {
                 content: [
                   {
@@ -1424,35 +1433,34 @@ class KnowledgeGraphMCPServer {
                   },
                 ],
               };
-            } else {
-              // Generate embeddings for all nodes without them
-              const result = await this.db.generateMissingEmbeddings(validatedArgs.model);
-              
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text: `Batch embedding generation complete:\nProcessed: ${result.processed}\nErrors: ${result.errors}\nModel: ${validatedArgs.model}`,
-                  },
-                ],
-              };
             }
+            // Generate embeddings for all nodes without them
+            const result = await this.db.generateMissingEmbeddings(validatedArgs.model);
+
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Batch embedding generation complete:\nProcessed: ${result.processed}\nErrors: ${result.errors}\nModel: ${validatedArgs.model}`,
+                },
+              ],
+            };
           }
 
           case 'hybrid_similarity_search': {
             const validatedArgs = validateHybridSearchRequest(args);
-            
+
             const results = await this.db.hybridSimilaritySearch(
-              { 
-                type: validatedArgs.type, 
-                label: validatedArgs.label, 
-                properties: validatedArgs.properties 
+              {
+                type: validatedArgs.type,
+                label: validatedArgs.label,
+                properties: validatedArgs.properties,
               },
-              { 
-                vectorWeight: validatedArgs.vectorWeight, 
-                traditionalWeight: validatedArgs.traditionalWeight, 
-                threshold: validatedArgs.threshold, 
-                model: validatedArgs.model 
+              {
+                vectorWeight: validatedArgs.vectorWeight,
+                traditionalWeight: validatedArgs.traditionalWeight,
+                threshold: validatedArgs.threshold,
+                model: validatedArgs.model,
               }
             );
 
@@ -1468,7 +1476,7 @@ class KnowledgeGraphMCPServer {
 
           case 'analyze_vector_similarity': {
             const validatedArgs = validateSimilarityAnalysisRequest(args);
-            
+
             if (validatedArgs.nodeIds.length < 2) {
               return {
                 content: [
@@ -1481,7 +1489,7 @@ class KnowledgeGraphMCPServer {
               };
             }
 
-                        // Get all nodes and their embeddings
+            // Get all nodes and their embeddings
             const nodes = [];
             for (const nodeId of validatedArgs.nodeIds) {
               const node = await this.db.getNode(nodeId);
@@ -1489,15 +1497,15 @@ class KnowledgeGraphMCPServer {
                 nodes.push(node);
               }
             }
-            
+
             const similarities = [];
-            
+
             // Calculate pairwise similarities
             for (let i = 0; i < nodes.length; i++) {
               for (let j = i + 1; j < nodes.length; j++) {
                 const node1 = nodes[i];
                 const node2 = nodes[j];
-                
+
                 // Ensure both nodes have embeddings
                 try {
                   await this.db.generateNodeEmbedding(node1.id, validatedArgs.model);
@@ -1523,23 +1531,20 @@ class KnowledgeGraphMCPServer {
                       node1: { id: node1.id, label: node1.label },
                       node2: { id: node2.id, label: node2.label },
                       similarity: similarity,
-                      percentage: `${(similarity * 100).toFixed(1)}%`
+                      percentage: `${(similarity * 100).toFixed(1)}%`,
                     });
-                  } catch (error) {
-                    // Skip invalid embeddings
-                    continue;
-                  }
+                  } catch (error) {}
                 }
               }
             }
 
-                        return {
+            return {
               content: [
                 {
                   type: 'text',
-                  text: `Vector similarity analysis:\nModel: ${validatedArgs.model}\nNodes analyzed: ${nodes.length}\nPairwise similarities:\n\n${similarities.map(s => 
-                    `${s.node1.label} ↔ ${s.node2.label}: ${s.percentage}`
-                  ).join('\n')}\n\nDetailed Results:\n${JSON.stringify(similarities, null, 2)}`,
+                  text: `Vector similarity analysis:\nModel: ${validatedArgs.model}\nNodes analyzed: ${nodes.length}\nPairwise similarities:\n\n${similarities
+                    .map((s) => `${s.node1.label} ↔ ${s.node2.label}: ${s.percentage}`)
+                    .join('\n')}\n\nDetailed Results:\n${JSON.stringify(similarities, null, 2)}`,
                 },
               ],
             };

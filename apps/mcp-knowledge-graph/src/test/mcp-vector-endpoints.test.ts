@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, beforeAll, afterAll } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { KnowledgeGraphDB } from '../db/index.js';
 
 describe('MCP Vector Search Endpoints', () => {
@@ -7,7 +7,7 @@ describe('MCP Vector Search Endpoints', () => {
   beforeAll(async () => {
     // Use in-memory database for testing
     testDb = new KnowledgeGraphDB(':memory:');
-    
+
     // Note: For MCP handler testing, we test the database methods directly
     // since the handlers are thin wrappers around these methods
   });
@@ -29,8 +29,8 @@ describe('MCP Vector Search Endpoints', () => {
       properties: {
         framework: 'React',
         features: ['login', 'signup', 'password-reset'],
-        description: 'Comprehensive user authentication system'
-      }
+        description: 'Comprehensive user authentication system',
+      },
     });
 
     await testDb.createNode({
@@ -39,8 +39,8 @@ describe('MCP Vector Search Endpoints', () => {
       properties: {
         framework: 'React',
         features: ['form-validation', 'input-fields'],
-        description: 'Form component for user login'
-      }
+        description: 'Form component for user login',
+      },
     });
 
     await testDb.createNode({
@@ -49,8 +49,8 @@ describe('MCP Vector Search Endpoints', () => {
       properties: {
         type: 'backend',
         features: ['jwt', 'session-management', 'user-verification'],
-        description: 'Backend authentication service'
-      }
+        description: 'Backend authentication service',
+      },
     });
 
     await testDb.createNode({
@@ -59,8 +59,8 @@ describe('MCP Vector Search Endpoints', () => {
       properties: {
         engine: 'postgresql',
         fields: ['id', 'username', 'email', 'password_hash'],
-        description: 'User account data storage'
-      }
+        description: 'User account data storage',
+      },
     });
   });
 
@@ -79,14 +79,14 @@ describe('MCP Vector Search Endpoints', () => {
       const results = await testDb.vectorSearchNodes('user authentication login', {
         limit: 10,
         threshold: 0.1,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].similarity).toBeGreaterThan(0);
-      
+
       // Should find authentication-related nodes
-      const labels = results.map(r => r.node.label);
+      const labels = results.map((r) => r.node.label);
       expect(labels).toContain('UserAuthentication');
       expect(labels).toContain('LoginForm');
     });
@@ -96,11 +96,11 @@ describe('MCP Vector Search Endpoints', () => {
         limit: 10,
         threshold: 0.1,
         model: 'simple',
-        nodeTypes: ['Component']
+        nodeTypes: ['Component'],
       });
 
       expect(results.length).toBeGreaterThan(0);
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.node.type).toBe('Component');
       });
     });
@@ -109,18 +109,18 @@ describe('MCP Vector Search Endpoints', () => {
       const highThreshold = await testDb.vectorSearchNodes('authentication', {
         limit: 10,
         threshold: 0.8,
-        model: 'simple'
+        model: 'simple',
       });
 
       const lowThreshold = await testDb.vectorSearchNodes('authentication', {
         limit: 10,
         threshold: 0.1,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(lowThreshold.length).toBeGreaterThanOrEqual(highThreshold.length);
-      
-      highThreshold.forEach(result => {
+
+      highThreshold.forEach((result) => {
         expect(result.similarity).toBeGreaterThanOrEqual(0.8);
       });
     });
@@ -128,7 +128,7 @@ describe('MCP Vector Search Endpoints', () => {
     it('should handle empty queries gracefully', async () => {
       const results = await testDb.vectorSearchNodes('', {
         limit: 5,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(Array.isArray(results)).toBe(true);
@@ -154,24 +154,24 @@ describe('MCP Vector Search Endpoints', () => {
       const results = await testDb.vectorSearchNodes('authentication', {
         limit: 5,
         threshold: 0.05,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(results.length).toBeGreaterThan(0);
     });
 
     it('should handle non-existent node IDs gracefully', async () => {
-      await expect(
-        testDb.generateNodeEmbedding('non-existent-id', 'simple')
-      ).rejects.toThrow('Node non-existent-id not found');
+      await expect(testDb.generateNodeEmbedding('non-existent-id', 'simple')).rejects.toThrow(
+        'Node non-existent-id not found'
+      );
     });
 
     it('should handle invalid model names', async () => {
       const nodes = await testDb.queryNodes({ limit: 1 });
       if (nodes.length > 0) {
-        await expect(
-          testDb.generateNodeEmbedding(nodes[0].id, 'invalid-model')
-        ).rejects.toThrow('Embedding model invalid-model not supported');
+        await expect(testDb.generateNodeEmbedding(nodes[0].id, 'invalid-model')).rejects.toThrow(
+          'Embedding model invalid-model not supported'
+        );
       }
     });
   });
@@ -185,20 +185,20 @@ describe('MCP Vector Search Endpoints', () => {
       const searchData = {
         type: 'Component',
         label: 'UserForm',
-        properties: { framework: 'React', features: ['authentication'] }
+        properties: { framework: 'React', features: ['authentication'] },
       };
 
       const results = await testDb.hybridSimilaritySearch(searchData, {
         vectorWeight: 0.6,
         traditionalWeight: 0.4,
         threshold: 0.4,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(results.length).toBeGreaterThan(0);
-      
+
       // Should find component-related nodes
-      const components = results.filter(r => r.type === 'Component');
+      const components = results.filter((r) => r.type === 'Component');
       expect(components.length).toBeGreaterThan(0);
     });
 
@@ -206,28 +206,28 @@ describe('MCP Vector Search Endpoints', () => {
       const searchData = {
         type: 'Component',
         label: 'LoginForm', // Exact match exists
-        properties: {}
+        properties: {},
       };
 
       const traditionalHeavy = await testDb.hybridSimilaritySearch(searchData, {
         vectorWeight: 0.1,
         traditionalWeight: 0.9,
         threshold: 0.3,
-        model: 'simple'
+        model: 'simple',
       });
 
       const vectorHeavy = await testDb.hybridSimilaritySearch(searchData, {
         vectorWeight: 0.9,
         traditionalWeight: 0.1,
         threshold: 0.3,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(traditionalHeavy.length).toBeGreaterThan(0);
       expect(vectorHeavy.length).toBeGreaterThan(0);
 
       // Traditional heavy should strongly favor the exact label match
-      const traditionalMatch = traditionalHeavy.find(n => n.label === 'LoginForm');
+      const traditionalMatch = traditionalHeavy.find((n) => n.label === 'LoginForm');
       expect(traditionalMatch).toBeDefined();
     });
 
@@ -235,17 +235,17 @@ describe('MCP Vector Search Endpoints', () => {
       const searchData = {
         type: 'Service',
         label: 'CompleteDifferentService',
-        properties: { unrelated: 'properties' }
+        properties: { unrelated: 'properties' },
       };
 
       const highThreshold = await testDb.hybridSimilaritySearch(searchData, {
         threshold: 0.9,
-        model: 'simple'
+        model: 'simple',
       });
 
       const lowThreshold = await testDb.hybridSimilaritySearch(searchData, {
         threshold: 0.1,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(lowThreshold.length).toBeGreaterThanOrEqual(highThreshold.length);
@@ -258,15 +258,18 @@ describe('MCP Vector Search Endpoints', () => {
     });
 
     it('should create new node when no similar exists', async () => {
-      const result = await testDb.createOrMergeNode({
-        type: 'Library',
-        label: 'ChartingLibrary',
-        properties: { purpose: 'data-visualization', charts: ['bar', 'line', 'pie'] }
-      }, {
-        mergeStrategy: 'merge',
-        useVectorSimilarity: true,
-        similarityThreshold: 0.8
-      });
+      const result = await testDb.createOrMergeNode(
+        {
+          type: 'Library',
+          label: 'ChartingLibrary',
+          properties: { purpose: 'data-visualization', charts: ['bar', 'line', 'pie'] },
+        },
+        {
+          mergeStrategy: 'merge',
+          useVectorSimilarity: true,
+          similarityThreshold: 0.8,
+        }
+      );
 
       expect(result.action).toBe('created');
       expect(result.node.type).toBe('Library');
@@ -275,23 +278,26 @@ describe('MCP Vector Search Endpoints', () => {
     });
 
     it('should merge with existing similar node', async () => {
-      const result = await testDb.createOrMergeNode({
-        type: 'Component',
-        label: 'UserAuthenticationForm',
-        properties: {
-          framework: 'React',
-          features: ['login', 'social-auth', 'remember-me'],
-          newFeature: 'two-factor-auth'
+      const result = await testDb.createOrMergeNode(
+        {
+          type: 'Component',
+          label: 'UserAuthenticationForm',
+          properties: {
+            framework: 'React',
+            features: ['login', 'social-auth', 'remember-me'],
+            newFeature: 'two-factor-auth',
+          },
+        },
+        {
+          mergeStrategy: 'merge',
+          useVectorSimilarity: true,
+          similarityThreshold: 0.3,
         }
-      }, {
-        mergeStrategy: 'merge',
-        useVectorSimilarity: true,
-        similarityThreshold: 0.3
-      });
+      );
 
       expect(result.action).toBe('merged');
       expect(result.node.properties?.newFeature).toBe('two-factor-auth');
-      
+
       // Should have merged features arrays
       const features = result.node.properties?.features as string[];
       expect(features).toContain('login');
@@ -299,15 +305,18 @@ describe('MCP Vector Search Endpoints', () => {
     });
 
     it('should use traditional similarity when vector is disabled', async () => {
-      const result = await testDb.createOrMergeNode({
-        type: 'Component',
-        label: 'LoginForm', // Exact match exists
-        properties: { newProp: 'value' }
-      }, {
-        mergeStrategy: 'merge',
-        useVectorSimilarity: false,
-        similarityThreshold: 0.7
-      });
+      const result = await testDb.createOrMergeNode(
+        {
+          type: 'Component',
+          label: 'LoginForm', // Exact match exists
+          properties: { newProp: 'value' },
+        },
+        {
+          mergeStrategy: 'merge',
+          useVectorSimilarity: false,
+          similarityThreshold: 0.7,
+        }
+      );
 
       expect(['merged', 'created']).toContain(result.action);
       if (result.action === 'merged') {
@@ -318,29 +327,35 @@ describe('MCP Vector Search Endpoints', () => {
 
     it('should handle different merge strategies', async () => {
       // Skip strategy
-      const skipResult = await testDb.createOrMergeNode({
-        type: 'Component',
-        label: 'UserAuthentication',
-        properties: { shouldNotMerge: 'value' }
-      }, {
-        mergeStrategy: 'skip',
-        useVectorSimilarity: true,
-        similarityThreshold: 0.3
-      });
+      const skipResult = await testDb.createOrMergeNode(
+        {
+          type: 'Component',
+          label: 'UserAuthentication',
+          properties: { shouldNotMerge: 'value' },
+        },
+        {
+          mergeStrategy: 'skip',
+          useVectorSimilarity: true,
+          similarityThreshold: 0.3,
+        }
+      );
 
       expect(skipResult.action).toBe('skipped');
       expect(skipResult.node.properties?.shouldNotMerge).toBeUndefined();
 
       // Update strategy
-      const updateResult = await testDb.createOrMergeNode({
-        type: 'Component',
-        label: 'UserAuthentication',
-        properties: { replaced: 'properties' }
-      }, {
-        mergeStrategy: 'update',
-        useVectorSimilarity: true,
-        similarityThreshold: 0.3
-      });
+      const updateResult = await testDb.createOrMergeNode(
+        {
+          type: 'Component',
+          label: 'UserAuthentication',
+          properties: { replaced: 'properties' },
+        },
+        {
+          mergeStrategy: 'update',
+          useVectorSimilarity: true,
+          similarityThreshold: 0.3,
+        }
+      );
 
       expect(updateResult.action).toBe('merged');
       expect(updateResult.node.properties?.replaced).toBe('properties');
@@ -362,22 +377,25 @@ describe('MCP Vector Search Endpoints', () => {
         targetId: targetNode.id,
         type: 'connects',
         properties: { method: 'API' },
-        weight: 0.8
+        weight: 0.8,
       });
     });
 
     it('should create new edge when none exists', async () => {
       const serviceNode = await testDb.queryNodes({ type: 'Service' });
-      
-      const result = await testDb.createOrMergeEdge({
-        sourceId: sourceNode.id,
-        targetId: serviceNode[0].id,
-        type: 'uses',
-        properties: { protocol: 'HTTP' },
-        weight: 0.9
-      }, {
-        mergeStrategy: 'merge'
-      });
+
+      const result = await testDb.createOrMergeEdge(
+        {
+          sourceId: sourceNode.id,
+          targetId: serviceNode[0].id,
+          type: 'uses',
+          properties: { protocol: 'HTTP' },
+          weight: 0.9,
+        },
+        {
+          mergeStrategy: 'merge',
+        }
+      );
 
       expect(result.action).toBe('created');
       expect(result.edge.type).toBe('uses');
@@ -386,19 +404,22 @@ describe('MCP Vector Search Endpoints', () => {
     });
 
     it('should merge with existing edge', async () => {
-      const result = await testDb.createOrMergeEdge({
-        sourceId: sourceNode.id,
-        targetId: targetNode.id,
-        type: 'connects',
-        properties: { 
-          method: 'API',
-          timeout: 5000,
-          newProp: 'value'
+      const result = await testDb.createOrMergeEdge(
+        {
+          sourceId: sourceNode.id,
+          targetId: targetNode.id,
+          type: 'connects',
+          properties: {
+            method: 'API',
+            timeout: 5000,
+            newProp: 'value',
+          },
+          weight: 1.0,
         },
-        weight: 1.0
-      }, {
-        mergeStrategy: 'merge'
-      });
+        {
+          mergeStrategy: 'merge',
+        }
+      );
 
       expect(result.action).toBe('merged');
       expect(result.edge.properties?.method).toBe('API');
@@ -410,28 +431,34 @@ describe('MCP Vector Search Endpoints', () => {
 
     it('should handle different merge strategies for edges', async () => {
       // Skip strategy
-      const skipResult = await testDb.createOrMergeEdge({
-        sourceId: sourceNode.id,
-        targetId: targetNode.id,
-        type: 'connects',
-        properties: { shouldNotMerge: 'value' }
-      }, {
-        mergeStrategy: 'skip'
-      });
+      const skipResult = await testDb.createOrMergeEdge(
+        {
+          sourceId: sourceNode.id,
+          targetId: targetNode.id,
+          type: 'connects',
+          properties: { shouldNotMerge: 'value' },
+        },
+        {
+          mergeStrategy: 'skip',
+        }
+      );
 
       expect(skipResult.action).toBe('skipped');
       expect(skipResult.edge.properties?.shouldNotMerge).toBeUndefined();
 
       // Update strategy
-      const updateResult = await testDb.createOrMergeEdge({
-        sourceId: sourceNode.id,
-        targetId: targetNode.id,
-        type: 'connects',
-        properties: { replaced: 'properties' },
-        weight: 0.5
-      }, {
-        mergeStrategy: 'update'
-      });
+      const updateResult = await testDb.createOrMergeEdge(
+        {
+          sourceId: sourceNode.id,
+          targetId: targetNode.id,
+          type: 'connects',
+          properties: { replaced: 'properties' },
+          weight: 0.5,
+        },
+        {
+          mergeStrategy: 'update',
+        }
+      );
 
       expect(updateResult.action).toBe('merged');
       expect(updateResult.edge.properties?.replaced).toBe('properties');
@@ -439,15 +466,18 @@ describe('MCP Vector Search Endpoints', () => {
     });
 
     it('should allow multiple edge types when configured', async () => {
-      const result = await testDb.createOrMergeEdge({
-        sourceId: sourceNode.id,
-        targetId: targetNode.id,
-        type: 'depends_on', // Different from existing 'connects'
-        properties: { dependency: 'required' }
-      }, {
-        mergeStrategy: 'merge',
-        allowMultipleTypes: true
-      });
+      const result = await testDb.createOrMergeEdge(
+        {
+          sourceId: sourceNode.id,
+          targetId: targetNode.id,
+          type: 'depends_on', // Different from existing 'connects'
+          properties: { dependency: 'required' },
+        },
+        {
+          mergeStrategy: 'merge',
+          allowMultipleTypes: true,
+        }
+      );
 
       expect(result.action).toBe('created');
       expect(result.edge.type).toBe('depends_on');
@@ -469,11 +499,11 @@ describe('MCP Vector Search Endpoints', () => {
       const results = await testDb.vectorSearchNodes('authentication', {
         limit: 10,
         threshold: 0.05,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(results.length).toBeGreaterThan(0);
-      
+
       // Check that similarities are calculated and sorted
       for (let i = 0; i < results.length - 1; i++) {
         expect(results[i].similarity).toBeGreaterThanOrEqual(results[i + 1].similarity);
@@ -482,16 +512,16 @@ describe('MCP Vector Search Endpoints', () => {
 
     it('should handle different embedding models', async () => {
       const nodes = await testDb.queryNodes({ limit: 2 });
-      
+
       // Test with simple model
       const results = await testDb.vectorSearchNodes('component', {
         limit: 5,
         threshold: 0.05,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(results.length).toBeGreaterThan(0);
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(typeof result.similarity).toBe('number');
         expect(result.similarity).toBeGreaterThanOrEqual(0);
         expect(result.similarity).toBeLessThanOrEqual(1);
@@ -501,17 +531,15 @@ describe('MCP Vector Search Endpoints', () => {
 
   describe('Error Handling', () => {
     it('should handle invalid node IDs in embedding generation', async () => {
-      await expect(
-        testDb.generateNodeEmbedding('invalid-id', 'simple')
-      ).rejects.toThrow();
+      await expect(testDb.generateNodeEmbedding('invalid-id', 'simple')).rejects.toThrow();
     });
 
     it('should handle invalid embedding models', async () => {
       const nodes = await testDb.queryNodes({ limit: 1 });
       if (nodes.length > 0) {
-        await expect(
-          testDb.generateNodeEmbedding(nodes[0].id, 'invalid-model')
-        ).rejects.toThrow('Embedding model invalid-model not supported');
+        await expect(testDb.generateNodeEmbedding(nodes[0].id, 'invalid-model')).rejects.toThrow(
+          'Embedding model invalid-model not supported'
+        );
       }
     });
 
@@ -520,7 +548,7 @@ describe('MCP Vector Search Endpoints', () => {
       const results = await testDb.vectorSearchNodes('test query', {
         limit: 5,
         threshold: 0.1,
-        model: 'simple'
+        model: 'simple',
       });
 
       // Should handle gracefully
@@ -532,12 +560,12 @@ describe('MCP Vector Search Endpoints', () => {
 
       const emptyResults = await testDb.vectorSearchNodes('', {
         limit: 5,
-        model: 'simple'
+        model: 'simple',
       });
 
       const specialCharResults = await testDb.vectorSearchNodes('!@#$%^&*()', {
         limit: 5,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(Array.isArray(emptyResults)).toBe(true);
@@ -554,7 +582,7 @@ describe('MCP Vector Search Endpoints', () => {
           testDb.createNode({
             type: 'TestNode',
             label: `TestNode${i}`,
-            properties: { index: i, category: i % 5 }
+            properties: { index: i, category: i % 5 },
           })
         );
       }
@@ -568,7 +596,7 @@ describe('MCP Vector Search Endpoints', () => {
       const searchResults = await testDb.vectorSearchNodes('test node category', {
         limit: 10,
         threshold: 0.05,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(searchResults.length).toBeGreaterThan(0);
@@ -585,17 +613,17 @@ describe('MCP Vector Search Endpoints', () => {
               steps: ['validation', 'transformation', 'output'],
               options: {
                 strict: true,
-                timeout: 5000
-              }
+                timeout: 5000,
+              },
             },
             metadata: {
               version: '2.1.0',
               author: 'test',
-              dependencies: ['lodash', 'moment']
-            }
+              dependencies: ['lodash', 'moment'],
+            },
           },
-          features: ['async-processing', 'error-handling', 'logging']
-        }
+          features: ['async-processing', 'error-handling', 'logging'],
+        },
       });
 
       await testDb.generateNodeEmbedding(complexNode.id, 'simple');
@@ -603,12 +631,12 @@ describe('MCP Vector Search Endpoints', () => {
       const results = await testDb.vectorSearchNodes('data processing validation', {
         limit: 5,
         threshold: 0.05,
-        model: 'simple'
+        model: 'simple',
       });
 
       expect(results.length).toBeGreaterThan(0);
-      
-      const foundComplex = results.find(r => r.node.id === complexNode.id);
+
+      const foundComplex = results.find((r) => r.node.id === complexNode.id);
       expect(foundComplex).toBeDefined();
     });
   });
