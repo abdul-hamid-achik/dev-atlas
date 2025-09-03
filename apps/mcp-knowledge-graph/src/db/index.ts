@@ -42,7 +42,7 @@ export class KnowledgeGraphDB {
     // Check for explicit directory from environment variable first
     const envDir = process.env.KNOWLEDGE_GRAPH_DIR;
     let targetPath: string;
-    
+
     if (dbPath) {
       targetPath = dbPath;
     } else if (envDir) {
@@ -51,7 +51,7 @@ export class KnowledgeGraphDB {
       const projectRoot = findProjectRoot();
       targetPath = path.join(projectRoot, 'knowledge-graph.db');
     }
-    
+
     // Log database initialization info
     console.error(`[KnowledgeGraph] Current working directory: ${process.cwd()}`);
     if (envDir) {
@@ -61,11 +61,11 @@ export class KnowledgeGraphDB {
       console.error(`[KnowledgeGraph] Project root detected: ${projectRoot}`);
     }
     console.error(`[KnowledgeGraph] Database path: ${targetPath}`);
-    
+
     this.sqlite = new Database(targetPath);
     this.db = drizzle(this.sqlite);
     this.initializeTables();
-    
+
     console.error(`[KnowledgeGraph] Database initialized successfully`);
   }
 
