@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { and, desc, eq, like } from 'drizzle-orm';
+import { and, desc, eq, like, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { v4 as uuidv4 } from 'uuid';
@@ -14,7 +14,7 @@ import type {
   QueryEdges,
   QueryNodes,
 } from '../types/schema.js';
-import { edges, nodes } from './schema.js';
+import { edges, nodes, vectorSearchCache } from './schema.js';
 
 // Zod schemas for runtime validation and type safety
 const DbNodeResultSchema = z.object({
@@ -141,10 +141,22 @@ function findProjectRoot(startPath: string = process.cwd()): string {
   return process.cwd();
 }
 
+/**
+ * KnowledgeGraphDB provides a comprehensive interface for managing a knowledge graph
+ * stored in SQLite using Drizzle ORM. It supports CRUD operations, advanced search,
+ * vector embeddings, code analysis, and graph traversal algorithms.
+ */
 export class KnowledgeGraphDB {
   private db: ReturnType<typeof drizzle>;
   private sqlite: Database.Database;
+  private vectorExtensionAvailable = false;
 
+  /**
+   * Creates a new instance of KnowledgeGraphDB.
+   * 
+   * @param dbPath Optional path to the SQLite database file. If not provided,
+   *               will attempt to locate the database using various strategies.
+   */
   constructor(dbPath?: string) {
     // Check for explicit directory from environment variable first
     const envDir = process.env.KNOWLEDGE_GRAPH_DIR;
@@ -223,7 +235,7 @@ export class KnowledgeGraphDB {
   }
 
   private initializeTables() {
-    // Create tables if they don't exist
+    // Create base tables if they don't exist
     this.sqlite.exec(`
       CREATE TABLE IF NOT EXISTS nodes (
         id TEXT PRIMARY KEY,
@@ -250,17 +262,123 @@ export class KnowledgeGraphDB {
       );
     `);
 
+    // Migrate schema to add new vector search columns
+    this.migrateToVectorSearch();
+
+    // Create vector search cache table
+    this.sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS vector_search_cache (
+        id TEXT PRIMARY KEY,
+        query_hash TEXT NOT NULL UNIQUE,
+        query_embedding TEXT NOT NULL,
+        results TEXT NOT NULL,
+        model TEXT NOT NULL,
+        created_at INTEGER DEFAULT (strftime('%s', 'now')),
+        expires_at INTEGER
+      );
+    `);
+
     // Create indexes for better performance
     this.sqlite.exec(`
       CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes (type);
       CREATE INDEX IF NOT EXISTS idx_nodes_label ON nodes (label);
+      CREATE INDEX IF NOT EXISTS idx_nodes_embedding_model ON nodes (embedding_model);
       CREATE INDEX IF NOT EXISTS idx_edges_source ON edges (source_id);
       CREATE INDEX IF NOT EXISTS idx_edges_target ON edges (target_id);
       CREATE INDEX IF NOT EXISTS idx_edges_type ON edges (type);
+      CREATE INDEX IF NOT EXISTS idx_edges_embedding_model ON edges (embedding_model);
+      CREATE INDEX IF NOT EXISTS idx_vector_cache_hash ON vector_search_cache (query_hash);
+      CREATE INDEX IF NOT EXISTS idx_vector_cache_model ON vector_search_cache (model);
     `);
+
+    // Try to load vector search extension if available
+    this.initializeVectorExtensions();
+  }
+
+  // Migrate existing database to support vector search
+  private migrateToVectorSearch() {
+    try {
+      // Check if embedding column exists in nodes table
+      const nodesInfo = this.sqlite.prepare("PRAGMA table_info(nodes)").all() as Array<{
+        cid: number;
+        name: string;
+        type: string;
+        notnull: number;
+        dflt_value: unknown;
+        pk: number;
+      }>;
+
+      const hasEmbeddingColumn = nodesInfo.some(col => col.name === 'embedding');
+      const hasEmbeddingModelColumn = nodesInfo.some(col => col.name === 'embedding_model');
+
+      if (!hasEmbeddingColumn) {
+        console.error('[KnowledgeGraph] Adding embedding column to nodes table');
+        this.sqlite.exec('ALTER TABLE nodes ADD COLUMN embedding TEXT');
+      }
+
+      if (!hasEmbeddingModelColumn) {
+        console.error('[KnowledgeGraph] Adding embedding_model column to nodes table');
+        this.sqlite.exec('ALTER TABLE nodes ADD COLUMN embedding_model TEXT');
+      }
+
+      // Check if embedding columns exist in edges table
+      const edgesInfo = this.sqlite.prepare("PRAGMA table_info(edges)").all() as Array<{
+        cid: number;
+        name: string;
+        type: string;
+        notnull: number;
+        dflt_value: unknown;
+        pk: number;
+      }>;
+
+      const edgeHasEmbeddingColumn = edgesInfo.some(col => col.name === 'embedding');
+      const edgeHasEmbeddingModelColumn = edgesInfo.some(col => col.name === 'embedding_model');
+
+      if (!edgeHasEmbeddingColumn) {
+        console.error('[KnowledgeGraph] Adding embedding column to edges table');
+        this.sqlite.exec('ALTER TABLE edges ADD COLUMN embedding TEXT');
+      }
+
+      if (!edgeHasEmbeddingModelColumn) {
+        console.error('[KnowledgeGraph] Adding embedding_model column to edges table');
+        this.sqlite.exec('ALTER TABLE edges ADD COLUMN embedding_model TEXT');
+      }
+
+      console.error('[KnowledgeGraph] Vector search schema migration completed successfully');
+    } catch (error) {
+      console.error('[KnowledgeGraph] Schema migration failed:', error);
+      throw new Error(`Failed to migrate database schema: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Initialize vector search extensions
+  private initializeVectorExtensions() {
+    try {
+      // Try to load sqlite-vec extension
+      this.sqlite.loadExtension('vec');
+      console.error('[KnowledgeGraph] Loaded vec extension for vector search');
+      this.vectorExtensionAvailable = true;
+    } catch (error) {
+      try {
+        // Try alternative vector extension paths
+        this.sqlite.loadExtension('sqlite-vec');
+        console.error('[KnowledgeGraph] Loaded sqlite-vec extension');
+        this.vectorExtensionAvailable = true;
+      } catch (error2) {
+        console.error('[KnowledgeGraph] No vector extension available, using JavaScript implementation');
+        this.vectorExtensionAvailable = false;
+      }
+    }
   }
 
   // Node operations
+  /**
+   * Creates a new node in the knowledge graph.
+   * 
+   * @param data The node data including type, label, and optional properties
+   * @returns Promise resolving to the created node with generated ID
+   * @throws Error if node creation fails
+   */
   async createNode(data: CreateNode): Promise<Node> {
     const id = uuidv4();
     const node = {
@@ -285,6 +403,542 @@ export class KnowledgeGraphDB {
     return node;
   }
 
+  // Smart node creation with optional merging (now with vector embeddings)
+  async createOrMergeNode(
+    data: CreateNode,
+    options: {
+      mergeStrategy?: 'skip' | 'update' | 'merge';
+      similarityThreshold?: number;
+      matchFields?: ('type' | 'label' | 'properties')[];
+      useVectorSimilarity?: boolean;
+      embeddingModel?: string;
+    } = {}
+  ): Promise<{ node: Node; action: 'created' | 'merged' | 'skipped' }> {
+    const {
+      mergeStrategy = 'merge',
+      similarityThreshold = 0.8,
+      matchFields = ['type', 'label'],
+      useVectorSimilarity = true,
+      embeddingModel = 'simple'
+    } = options;
+
+    let candidates: Node[] = [];
+
+    // Use hybrid similarity search if vector similarity is enabled
+    if (useVectorSimilarity) {
+      try {
+        candidates = await this.hybridSimilaritySearch(data, {
+          threshold: similarityThreshold,
+          model: embeddingModel
+        });
+      } catch (error) {
+        console.error('[VectorSearch] Hybrid search failed, falling back to traditional:', error);
+        candidates = await this.findSimilarNodes(data, matchFields, similarityThreshold);
+      }
+    } else {
+      candidates = await this.findSimilarNodes(data, matchFields, similarityThreshold);
+    }
+
+    if (candidates.length === 0) {
+      // No similar nodes found, create new one with embedding
+      const node = await this.createNode(data);
+
+      // Generate embedding for the new node
+      try {
+        await this.generateNodeEmbedding(node.id, embeddingModel);
+      } catch (error) {
+        console.error(`[VectorSearch] Failed to generate embedding for new node ${node.id}:`, error);
+      }
+
+      return { node, action: 'created' };
+    }
+
+    const bestMatch = candidates[0]; // Most similar node
+
+    switch (mergeStrategy) {
+      case 'skip':
+        return { node: bestMatch, action: 'skipped' };
+
+      case 'update':
+        const updated = await this.updateNode(bestMatch.id, {
+          label: data.label,
+          properties: data.properties
+        });
+
+        // Regenerate embedding after update
+        try {
+          await this.generateNodeEmbedding(bestMatch.id, embeddingModel);
+        } catch (error) {
+          console.error(`[VectorSearch] Failed to regenerate embedding for updated node ${bestMatch.id}:`, error);
+        }
+
+        return { node: updated!, action: 'merged' };
+
+      case 'merge':
+      default:
+        const merged = await this.mergeNodeProperties(bestMatch.id, data);
+
+        // Regenerate embedding after merge
+        try {
+          await this.generateNodeEmbedding(bestMatch.id, embeddingModel);
+        } catch (error) {
+          console.error(`[VectorSearch] Failed to regenerate embedding for merged node ${bestMatch.id}:`, error);
+        }
+
+        return { node: merged, action: 'merged' };
+    }
+  }
+
+  // Find nodes similar to the provided data
+  private async findSimilarNodes(
+    data: CreateNode,
+    matchFields: ('type' | 'label' | 'properties')[],
+    threshold: number
+  ): Promise<Node[]> {
+    const candidates: Node[] = [];
+
+    // First, get nodes with same type if type matching is enabled
+    if (matchFields.includes('type')) {
+      const sameTypeNodes = await this.queryNodes({ type: data.type });
+
+      for (const node of sameTypeNodes) {
+        let similarity = 0;
+        let factors = 0;
+
+        // Type similarity (already matched)
+        if (matchFields.includes('type')) {
+          similarity += 0.3;
+          factors++;
+        }
+
+        // Label similarity
+        if (matchFields.includes('label')) {
+          const labelSim = this.stringSimilarity(data.label, node.label);
+          similarity += labelSim * 0.4;
+          factors++;
+        }
+
+        // Properties similarity
+        if (matchFields.includes('properties') && data.properties && node.properties) {
+          const propSim = this.objectSimilarity(data.properties, node.properties);
+          similarity += propSim * 0.3;
+          factors++;
+        }
+
+        const normalizedSimilarity = factors > 0 ? similarity / factors : 0;
+
+        if (normalizedSimilarity >= threshold) {
+          candidates.push(node);
+        }
+      }
+    }
+
+    // Sort by similarity (most similar first)
+    return candidates.sort((a, b) => {
+      const simA = this.calculateNodeSimilarity(data, a);
+      const simB = this.calculateNodeSimilarity(data, b);
+      return simB - simA;
+    });
+  }
+
+  // Calculate similarity between CreateNode data and existing Node
+  private calculateNodeSimilarity(data: CreateNode, node: Node): number {
+    let similarity = 0;
+
+    // Type similarity
+    if (data.type === node.type) similarity += 0.3;
+
+    // Label similarity
+    const labelSim = this.stringSimilarity(data.label, node.label);
+    similarity += labelSim * 0.4;
+
+    // Properties similarity
+    if (data.properties && node.properties) {
+      const propSim = this.objectSimilarity(data.properties, node.properties);
+      similarity += propSim * 0.3;
+    }
+
+    return Math.min(similarity, 1.0);
+  }
+
+  // Merge properties from new data into existing node
+  private async mergeNodeProperties(nodeId: string, newData: CreateNode): Promise<Node> {
+    const existing = await this.getNode(nodeId);
+    if (!existing) throw new Error(`Node ${nodeId} not found`);
+
+    const mergedProperties = this.deepMergeProperties(
+      existing.properties || {},
+      newData.properties || {}
+    );
+
+    const updated = await this.updateNode(nodeId, {
+      label: newData.label, // Update label to the newer one
+      properties: mergedProperties
+    });
+
+    return updated!;
+  }
+
+  // Deep merge two property objects
+  private deepMergeProperties(
+    existing: Record<string, unknown>,
+    incoming: Record<string, unknown>
+  ): Record<string, unknown> {
+    const result = { ...existing };
+
+    for (const [key, value] of Object.entries(incoming)) {
+      if (key in result) {
+        // Handle conflicts
+        if (Array.isArray(result[key]) && Array.isArray(value)) {
+          // Merge arrays and remove duplicates
+          result[key] = [...new Set([...(result[key] as unknown[]), ...value])];
+        } else if (
+          typeof result[key] === 'object' &&
+          typeof value === 'object' &&
+          result[key] !== null &&
+          value !== null &&
+          !Array.isArray(result[key]) &&
+          !Array.isArray(value)
+        ) {
+          // Recursively merge objects
+          result[key] = this.deepMergeProperties(
+            result[key] as Record<string, unknown>,
+            value as Record<string, unknown>
+          );
+        } else {
+          // For primitives, use the incoming value (newer takes precedence)
+          result[key] = value;
+        }
+      } else {
+        // New property, just add it
+        result[key] = value;
+      }
+    }
+
+    return result;
+  }
+
+  // ========== VECTOR EMBEDDING & SEARCH METHODS ==========
+
+  // Generate a simple text embedding (in production, use OpenAI or other embedding models)
+  private async generateEmbedding(text: string, model = 'simple'): Promise<number[]> {
+    if (model === 'simple') {
+      return this.generateSimpleEmbedding(text);
+    }
+
+    // In production, you would call an embedding API here:
+    // return await this.callEmbeddingAPI(text, model);
+
+    throw new Error(`Embedding model ${model} not supported`);
+  }
+
+  // Simple embedding generation using character frequencies and n-grams
+  private generateSimpleEmbedding(text: string): number[] {
+    const normalizedText = text.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+    const words = normalizedText.split(/\s+/).filter(w => w.length > 0);
+
+    // Create a 100-dimensional embedding vector
+    const dimension = 100;
+    const embedding = new Array(dimension).fill(0);
+
+    // Character frequency features
+    for (let i = 0; i < normalizedText.length; i++) {
+      const char = normalizedText.charCodeAt(i);
+      if (char >= 97 && char <= 122) { // a-z
+        embedding[char - 97] += 1;
+      } else if (char >= 48 && char <= 57) { // 0-9
+        embedding[26 + (char - 48)] += 1;
+      }
+    }
+
+    // Word position features
+    for (let i = 0; i < words.length && i < 20; i++) {
+      const wordHash = this.simpleHash(words[i]) % 40;
+      embedding[36 + wordHash] += 1;
+    }
+
+    // Length features
+    embedding[76] = text.length;
+    embedding[77] = words.length;
+    embedding[78] = words.reduce((sum, w) => sum + w.length, 0) / Math.max(words.length, 1);
+
+    // Bigram features
+    for (let i = 0; i < words.length - 1; i++) {
+      const bigram = words[i] + words[i + 1];
+      const bigramHash = this.simpleHash(bigram) % 20;
+      embedding[79 + bigramHash] += 1;
+    }
+
+    // Normalize the embedding vector
+    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+    return magnitude > 0 ? embedding.map(val => val / magnitude) : embedding;
+  }
+
+  // Simple hash function for string features
+  private simpleHash(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+  }
+
+  // Calculate cosine similarity between two vectors
+  private cosineSimilarity(vec1: number[], vec2: number[]): number {
+    if (vec1.length !== vec2.length) return 0;
+
+    let dotProduct = 0;
+    let norm1 = 0;
+    let norm2 = 0;
+
+    for (let i = 0; i < vec1.length; i++) {
+      dotProduct += vec1[i] * vec2[i];
+      norm1 += vec1[i] * vec1[i];
+      norm2 += vec2[i] * vec2[i];
+    }
+
+    const magnitude = Math.sqrt(norm1) * Math.sqrt(norm2);
+    return magnitude === 0 ? 0 : dotProduct / magnitude;
+  }
+
+  // Generate and store embedding for a node
+  async generateNodeEmbedding(nodeId: string, model = 'simple'): Promise<void> {
+    const node = await this.getNode(nodeId);
+    if (!node) throw new Error(`Node ${nodeId} not found`);
+
+    // Create embedding text from node data
+    const embeddingText = [
+      node.type,
+      node.label,
+      JSON.stringify(node.properties || {})
+    ].join(' ');
+
+    const embedding = await this.generateEmbedding(embeddingText, model);
+
+    await this.db
+      .update(nodes)
+      .set({
+        embedding: JSON.stringify(embedding),
+        embeddingModel: model
+      })
+      .where(eq(nodes.id, nodeId));
+  }
+
+  // Generate and store embedding for an edge
+  async generateEdgeEmbedding(edgeId: string, model = 'simple'): Promise<void> {
+    const edge = await this.getEdge(edgeId);
+    if (!edge) throw new Error(`Edge ${edgeId} not found`);
+
+    // Get source and target nodes for context
+    const sourceNode = await this.getNode(edge.sourceId);
+    const targetNode = await this.getNode(edge.targetId);
+
+    // Create embedding text from edge and context
+    const embeddingText = [
+      edge.type,
+      sourceNode?.label || '',
+      targetNode?.label || '',
+      JSON.stringify(edge.properties || {})
+    ].join(' ');
+
+    const embedding = await this.generateEmbedding(embeddingText, model);
+
+    await this.db
+      .update(edges)
+      .set({
+        embedding: JSON.stringify(embedding),
+        embeddingModel: model
+      })
+      .where(eq(edges.id, edgeId));
+  }
+
+  // Semantic search using vector similarity
+  async vectorSearchNodes(
+    query: string,
+    options: {
+      limit?: number;
+      threshold?: number;
+      model?: string;
+      nodeTypes?: string[];
+    } = {}
+  ): Promise<Array<{ node: Node; similarity: number }>> {
+    const {
+      limit = 20,
+      threshold = 0.1,
+      model = 'simple',
+      nodeTypes = []
+    } = options;
+
+    // Generate query embedding
+    const queryEmbedding = await this.generateEmbedding(query, model);
+
+    // Get all nodes with embeddings
+    let dbQuery = this.db.select().from(nodes);
+
+    if (nodeTypes.length > 0) {
+      // For simplicity, filter by first type (could be enhanced for multiple types)
+      dbQuery = dbQuery.where(eq(nodes.type, nodeTypes[0]));
+    }
+
+    const allNodes = await dbQuery;
+    const results: Array<{ node: Node; similarity: number }> = [];
+
+    for (const dbNode of allNodes) {
+      if (!dbNode.embedding) continue;
+
+      try {
+        const nodeEmbedding = JSON.parse(dbNode.embedding as string);
+        const similarity = this.cosineSimilarity(queryEmbedding, nodeEmbedding);
+
+        if (similarity >= threshold) {
+          const node: Node = {
+            id: dbNode.id,
+            type: dbNode.type,
+            label: dbNode.label,
+            properties: dbNode.properties ? JSON.parse(dbNode.properties as string) : {},
+            createdAt: dbNode.createdAt || undefined,
+            updatedAt: dbNode.updatedAt || undefined,
+          };
+
+          results.push({ node, similarity });
+        }
+      } catch (error) {
+        // Skip nodes with invalid embeddings
+        continue;
+      }
+    }
+
+    // Sort by similarity (highest first) and limit results
+    return results
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+  }
+
+  // Enhanced similarity matching using both traditional and vector similarity
+  async hybridSimilaritySearch(
+    data: CreateNode,
+    options: {
+      vectorWeight?: number;
+      traditionalWeight?: number;
+      threshold?: number;
+      model?: string;
+    } = {}
+  ): Promise<Node[]> {
+    const {
+      vectorWeight = 0.6,
+      traditionalWeight = 0.4,
+      threshold = 0.7,
+      model = 'simple'
+    } = options;
+
+    // Get traditional similarity results
+    const traditionalResults = await this.findSimilarNodes(
+      data,
+      ['type', 'label', 'properties'],
+      0.1 // Lower threshold for traditional search
+    );
+
+    // Generate query embedding
+    const queryText = [data.type, data.label, JSON.stringify(data.properties || {})].join(' ');
+    const queryEmbedding = await this.generateEmbedding(queryText, model);
+
+    // Calculate hybrid similarities
+    const hybridResults: Array<{ node: Node; similarity: number }> = [];
+
+    for (const node of traditionalResults) {
+      let combinedSimilarity = 0;
+
+      // Traditional similarity
+      const traditionalSim = this.calculateNodeSimilarity(data, node);
+      combinedSimilarity += traditionalSim * traditionalWeight;
+
+      // Vector similarity (if embedding exists)
+      if (node.properties?.embedding) {
+        try {
+          const nodeEmbedding = JSON.parse(node.properties.embedding as string);
+          const vectorSim = this.cosineSimilarity(queryEmbedding, nodeEmbedding);
+          combinedSimilarity += vectorSim * vectorWeight;
+        } catch (error) {
+          // If embedding is invalid, use only traditional similarity
+          combinedSimilarity = traditionalSim;
+        }
+      } else {
+        // No embedding available, use only traditional similarity
+        combinedSimilarity = traditionalSim;
+      }
+
+      if (combinedSimilarity >= threshold) {
+        hybridResults.push({ node, similarity: combinedSimilarity });
+      }
+    }
+
+    // Sort by similarity and return nodes
+    return hybridResults
+      .sort((a, b) => b.similarity - a.similarity)
+      .map(result => result.node);
+  }
+
+  // Batch generate embeddings for all nodes without embeddings
+  async generateMissingEmbeddings(model = 'simple'): Promise<{ processed: number; errors: number }> {
+    let processed = 0;
+    let errors = 0;
+
+    // Find nodes without embeddings
+    const nodesWithoutEmbeddings = await this.db
+      .select()
+      .from(nodes)
+      .where(isNull(nodes.embedding));
+
+    console.error(`[VectorSearch] Generating embeddings for ${nodesWithoutEmbeddings.length} nodes...`);
+
+    for (const node of nodesWithoutEmbeddings) {
+      try {
+        await this.generateNodeEmbedding(node.id, model);
+        processed++;
+
+        if (processed % 100 === 0) {
+          console.error(`[VectorSearch] Processed ${processed}/${nodesWithoutEmbeddings.length} nodes`);
+        }
+      } catch (error) {
+        console.error(`[VectorSearch] Failed to generate embedding for node ${node.id}:`, error);
+        errors++;
+      }
+    }
+
+    // Find edges without embeddings
+    const edgesWithoutEmbeddings = await this.db
+      .select()
+      .from(edges)
+      .where(isNull(edges.embedding));
+
+    console.error(`[VectorSearch] Generating embeddings for ${edgesWithoutEmbeddings.length} edges...`);
+
+    for (const edge of edgesWithoutEmbeddings) {
+      try {
+        await this.generateEdgeEmbedding(edge.id, model);
+        processed++;
+
+        if (processed % 100 === 0) {
+          console.error(`[VectorSearch] Processed ${processed} total embeddings`);
+        }
+      } catch (error) {
+        console.error(`[VectorSearch] Failed to generate embedding for edge ${edge.id}:`, error);
+        errors++;
+      }
+    }
+
+    console.error(`[VectorSearch] Embedding generation complete. Processed: ${processed}, Errors: ${errors}`);
+    return { processed, errors };
+  }
+
+  /**
+   * Retrieves a node by its ID.
+   * 
+   * @param id The unique identifier of the node
+   * @returns Promise resolving to the node if found, null otherwise
+   */
   async getNode(id: string): Promise<Node | null> {
     const result = await this.db.select().from(nodes).where(eq(nodes.id, id)).limit(1);
 
@@ -301,6 +955,12 @@ export class KnowledgeGraphDB {
     };
   }
 
+  /**
+   * Queries nodes based on filtering criteria.
+   * 
+   * @param query Query parameters including optional filters for type, label, limit, and offset
+   * @returns Promise resolving to array of matching nodes
+   */
   async queryNodes(query: QueryNodes): Promise<Node[]> {
     let dbQuery = this.db.select().from(nodes);
 
@@ -335,6 +995,13 @@ export class KnowledgeGraphDB {
   }
 
   // Edge operations
+  /**
+   * Creates a new edge (relationship) between two nodes in the knowledge graph.
+   * 
+   * @param data The edge data including sourceId, targetId, type, and optional properties/weight
+   * @returns Promise resolving to the created edge with generated ID
+   * @throws Error if source or target nodes don't exist or if edge creation fails
+   */
   async createEdge(data: CreateEdge): Promise<Edge> {
     const id = uuidv4();
     const edge = {
@@ -361,6 +1028,120 @@ export class KnowledgeGraphDB {
     return edge;
   }
 
+  // Smart edge creation with conflict resolution
+  async createOrMergeEdge(
+    data: CreateEdge,
+    options: {
+      mergeStrategy?: 'skip' | 'update' | 'merge';
+      allowMultipleTypes?: boolean;
+    } = {}
+  ): Promise<{ edge: Edge; action: 'created' | 'merged' | 'skipped' }> {
+    const { mergeStrategy = 'merge', allowMultipleTypes = false } = options;
+
+    // Check for existing edge between same nodes
+    const existingEdges = await this.queryEdges({
+      sourceId: data.sourceId,
+      targetId: data.targetId,
+      type: data.type // Always filter by type initially
+    });
+
+    if (existingEdges.length === 0) {
+      // No existing edge of this type between these nodes
+      if (allowMultipleTypes) {
+        // When multiple types are allowed, just create the new edge
+        const edge = await this.createEdge(data);
+        return { edge, action: 'created' };
+      } else {
+        // When multiple types are not allowed, check for any edge between nodes
+        const anyExistingEdges = await this.queryEdges({
+          sourceId: data.sourceId,
+          targetId: data.targetId
+        });
+        
+        if (anyExistingEdges.length === 0) {
+          // No edge at all, create new one
+          const edge = await this.createEdge(data);
+          return { edge, action: 'created' };
+        }
+        
+        // Use first existing edge as best match for merging
+        const bestMatch = anyExistingEdges[0];
+        
+        switch (mergeStrategy) {
+          case 'skip':
+            return { edge: bestMatch, action: 'skipped' };
+            
+          case 'update':
+            const updated = await this.updateEdge(bestMatch.id, {
+              type: data.type,
+              properties: data.properties,
+              weight: data.weight
+            });
+            return { edge: updated!, action: 'merged' };
+            
+          case 'merge':
+          default:
+            const merged = await this.mergeEdgeProperties(bestMatch.id, data);
+            return { edge: merged, action: 'merged' };
+        }
+      }
+    }
+
+    // Found existing edge of same type - merge based on strategy
+    const bestMatch = existingEdges[0];
+
+    switch (mergeStrategy) {
+      case 'skip':
+        return { edge: bestMatch, action: 'skipped' };
+
+      case 'update':
+        const updated = await this.updateEdge(bestMatch.id, {
+          type: data.type,
+          properties: data.properties,
+          weight: data.weight
+        });
+        return { edge: updated!, action: 'merged' };
+
+      case 'merge':
+      default:
+        const merged = await this.mergeEdgeProperties(bestMatch.id, data);
+        return { edge: merged, action: 'merged' };
+    }
+  }
+
+  // Merge properties from new edge data into existing edge
+  private async mergeEdgeProperties(edgeId: string, newData: CreateEdge): Promise<Edge> {
+    const existing = await this.getEdge(edgeId);
+    if (!existing) throw new Error(`Edge ${edgeId} not found`);
+
+    const mergedProperties = this.deepMergeProperties(
+      existing.properties || {},
+      newData.properties || {}
+    );
+
+    // For weight, use the newer value or average if both exist
+    let mergedWeight = newData.weight;
+    if (existing.weight !== undefined && newData.weight !== undefined) {
+      mergedWeight = (existing.weight + newData.weight) / 2;
+    } else if (existing.weight !== undefined && newData.weight === undefined) {
+      mergedWeight = existing.weight;
+    }
+
+    const updated = await this.updateEdge(edgeId, {
+      type: newData.type, // Use the newer type
+      properties: mergedProperties,
+      weight: mergedWeight
+    });
+
+    return updated!;
+  }
+
+  /**
+   * Retrieves an edge by its ID.
+   * 
+   * @param id The unique identifier of the edge
+   * @returns Promise resolving to the edge if found, null otherwise
+   */
   async getEdge(id: string): Promise<Edge | null> {
     const result = await this.db.select().from(edges).where(eq(edges.id, id)).limit(1);
 
@@ -379,6 +1160,12 @@ export class KnowledgeGraphDB {
     };
   }
 
+  /**
+   * Queries edges based on filtering criteria.
+   * 
+   * @param query Query parameters including optional filters for sourceId, targetId, type, limit, and offset
+   * @returns Promise resolving to array of matching edges
+   */
   async queryEdges(query: QueryEdges): Promise<Edge[]> {
     let dbQuery = this.db.select().from(edges);
 
@@ -416,6 +1203,13 @@ export class KnowledgeGraphDB {
   }
 
   // Graph traversal
+  /**
+   * Gets neighboring nodes connected to a given node.
+   * 
+   * @param nodeId The ID of the central node
+   * @param direction Direction of edges to follow: 'in' (incoming), 'out' (outgoing), or 'both'
+   * @returns Promise resolving to array of neighbor nodes with their connecting edges
+   */
   async getNeighbors(
     nodeId: string,
     direction: 'in' | 'out' | 'both' = 'both'
@@ -511,6 +1305,13 @@ export class KnowledgeGraphDB {
   }
 
   // Update operations
+  /**
+   * Updates an existing node with new data.
+   * 
+   * @param id The unique identifier of the node to update
+   * @param updates Object containing the fields to update (label and/or properties)
+   * @returns Promise resolving to the updated node if found, null otherwise
+   */
   async updateNode(
     id: string,
     updates: { label?: string; properties?: Record<string, unknown> }
@@ -535,6 +1336,13 @@ export class KnowledgeGraphDB {
     return updatedNode;
   }
 
+  /**
+   * Updates an existing edge with new data.
+   * 
+   * @param id The unique identifier of the edge to update
+   * @param updates Object containing the fields to update (type, properties, and/or weight)
+   * @returns Promise resolving to the updated edge if found, null otherwise
+   */
   async updateEdge(
     id: string,
     updates: { type?: string; properties?: Record<string, unknown>; weight?: number }
@@ -561,6 +1369,12 @@ export class KnowledgeGraphDB {
   }
 
   // Delete operations
+  /**
+   * Deletes a node and all its connected edges from the knowledge graph.
+   * 
+   * @param id The unique identifier of the node to delete
+   * @returns Promise resolving to an object with count of deleted edges, or null if node not found
+   */
   async deleteNode(id: string): Promise<{ deletedEdges: number } | null> {
     const node = await this.getNode(id);
     if (!node) return null;
@@ -575,6 +1389,12 @@ export class KnowledgeGraphDB {
     return { deletedEdges: deletedEdges1.changes + deletedEdges2.changes };
   }
 
+  /**
+   * Deletes an edge from the knowledge graph.
+   * 
+   * @param id The unique identifier of the edge to delete
+   * @returns Promise resolving to the deleted edge if found, null otherwise
+   */
   async deleteEdge(id: string): Promise<Edge | null> {
     const edge = await this.getEdge(id);
     if (!edge) return null;
@@ -622,6 +1442,206 @@ export class KnowledgeGraphDB {
 
     await this.db.insert(edges).values(insertData);
     return newEdges;
+  }
+
+  // Enhanced context querying for LLM collaboration
+  async getContextualInformation(
+    query: string,
+    options: {
+      includeRelated?: boolean;
+      relationshipDepth?: number;
+      contextTypes?: string[];
+      limit?: number;
+    } = {}
+  ): Promise<{
+    directMatches: Node[];
+    relatedNodes: { node: Node; relationship: string; distance: number }[];
+    summary: {
+      totalNodes: number;
+      nodeTypes: Record<string, number>;
+      keyRelationships: string[];
+      confidence: number;
+    };
+  }> {
+    const {
+      includeRelated = true,
+      relationshipDepth = 2,
+      contextTypes = [],
+      limit = 20
+    } = options;
+
+    // Find direct matches
+    const directMatches = await this.searchNodes(query, { limit, types: contextTypes });
+
+    let relatedNodes: { node: Node; relationship: string; distance: number }[] = [];
+
+    if (includeRelated && directMatches.length > 0) {
+      // Get related nodes within specified depth
+      const visited = new Set<string>();
+      const queue = directMatches.map(n => ({ node: n, distance: 0, relationship: 'direct' }));
+
+      while (queue.length > 0 && relatedNodes.length < limit * 2) {
+        const current = queue.shift()!;
+
+        if (visited.has(current.node.id) || current.distance >= relationshipDepth) {
+          continue;
+        }
+
+        visited.add(current.node.id);
+
+        if (current.distance > 0) {
+          relatedNodes.push({
+            node: current.node,
+            relationship: current.relationship,
+            distance: current.distance
+          });
+        }
+
+        // Get neighbors
+        const neighbors = await this.getNeighbors(current.node.id, 'both');
+        for (const { node: neighbor, edge } of neighbors) {
+          if (!visited.has(neighbor.id)) {
+            queue.push({
+              node: neighbor,
+              distance: current.distance + 1,
+              relationship: edge.type
+            });
+          }
+        }
+      }
+    }
+
+    // Generate summary
+    const allNodes = [...directMatches, ...relatedNodes.map(r => r.node)];
+    const nodeTypes: Record<string, number> = {};
+    const relationships = new Set<string>();
+
+    for (const node of allNodes) {
+      nodeTypes[node.type] = (nodeTypes[node.type] || 0) + 1;
+    }
+
+    for (const related of relatedNodes) {
+      relationships.add(related.relationship);
+    }
+
+    const summary = {
+      totalNodes: allNodes.length,
+      nodeTypes,
+      keyRelationships: Array.from(relationships),
+      confidence: directMatches.length / Math.max(limit, 1)
+    };
+
+    return {
+      directMatches,
+      relatedNodes: relatedNodes.slice(0, limit),
+      summary
+    };
+  }
+
+  // Get rich context around specific nodes (useful for LLM context)
+  async getRichNodeContext(
+    nodeIds: string[],
+    options: {
+      includeProperties?: boolean;
+      includeNeighbors?: boolean;
+      neighborDepth?: number;
+      includeMetadata?: boolean;
+    } = {}
+  ): Promise<{
+    nodes: Array<{
+      node: Node;
+      neighbors?: Array<{ node: Node; edge: Edge; direction: 'in' | 'out' }>;
+      metadata?: {
+        connectionCount: number;
+        centralityScore: number;
+        lastActivity?: Date;
+      };
+    }>;
+    networkSummary: {
+      totalConnections: number;
+      strongestConnections: Array<{ fromId: string; toId: string; weight: number; type: string }>;
+      clusterInfo: string[];
+    };
+  }> {
+    const {
+      includeProperties = true,
+      includeNeighbors = true,
+      neighborDepth = 1,
+      includeMetadata = true
+    } = options;
+
+    const results = [];
+    const allConnections: Array<{ fromId: string; toId: string; weight: number; type: string }> = [];
+
+    for (const nodeId of nodeIds) {
+      const node = await this.getNode(nodeId);
+      if (!node) continue;
+
+      const nodeResult: any = { node };
+
+      if (includeNeighbors) {
+        const neighbors = await this.getNeighbors(nodeId, 'both');
+        nodeResult.neighbors = neighbors.map(({ node: n, edge }) => ({
+          node: n,
+          edge,
+          direction: edge.sourceId === nodeId ? 'out' : 'in' as 'in' | 'out'
+        }));
+
+        // Collect connection data
+        for (const { edge } of neighbors) {
+          allConnections.push({
+            fromId: edge.sourceId,
+            toId: edge.targetId,
+            weight: edge.weight || 1,
+            type: edge.type
+          });
+        }
+      }
+
+      if (includeMetadata) {
+        const connectionCount = includeNeighbors ? nodeResult.neighbors.length :
+          (await this.getNeighbors(nodeId, 'both')).length;
+
+        // Simple centrality score based on connections
+        const centralityScore = connectionCount / Math.max(nodeIds.length, 1);
+
+        nodeResult.metadata = {
+          connectionCount,
+          centralityScore,
+          lastActivity: node.updatedAt
+        };
+      }
+
+      results.push(nodeResult);
+    }
+
+    // Find strongest connections
+    const strongestConnections = allConnections
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 10);
+
+    // Generate cluster info
+    const nodeTypeGroups = new Map<string, string[]>();
+    for (const result of results) {
+      const type = result.node.type;
+      if (!nodeTypeGroups.has(type)) {
+        nodeTypeGroups.set(type, []);
+      }
+      nodeTypeGroups.get(type)!.push(result.node.id);
+    }
+
+    const clusterInfo = Array.from(nodeTypeGroups.entries()).map(
+      ([type, ids]) => `${type}: ${ids.length} nodes`
+    );
+
+    return {
+      nodes: results,
+      networkSummary: {
+        totalConnections: allConnections.length,
+        strongestConnections,
+        clusterInfo
+      }
+    };
   }
 
   // Search operations
@@ -701,6 +1721,14 @@ export class KnowledgeGraphDB {
     return null; // No path found
   }
 
+  /**
+   * Extracts a subgraph centered around specified nodes up to a certain depth.
+   * 
+   * @param centerNodeIds Array of node IDs to use as subgraph centers
+   * @param depth Maximum depth to traverse from center nodes (default: 2)
+   * @param includeEdgeTypes Optional array of edge types to include in traversal
+   * @returns Promise resolving to object containing nodes and edges in the subgraph
+   */
   async getSubgraph(
     centerNodeIds: string[],
     depth = 2,
