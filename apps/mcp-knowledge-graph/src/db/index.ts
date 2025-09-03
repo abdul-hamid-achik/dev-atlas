@@ -4,14 +4,43 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { nodes, edges } from './schema.js';
 import { eq, and, like, desc } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import fs from 'fs';
 import type { Node, Edge, CreateNode, CreateEdge, QueryNodes, QueryEdges } from '../types/schema.js';
+
+function findProjectRoot(startPath: string = process.cwd()): string {
+  let currentPath = path.resolve(startPath);
+  
+  while (currentPath !== path.dirname(currentPath)) {
+    // Check for project root indicators
+    if (fs.existsSync(path.join(currentPath, 'package.json'))) {
+      const packageJson = path.join(currentPath, 'package.json');
+      try {
+        const content = fs.readFileSync(packageJson, 'utf8');
+        const pkg = JSON.parse(content);
+        // Look for indicators this is the main project root (not a nested package)
+        if (pkg.workspaces || pkg.name === 'dev-atlas' || fs.existsSync(path.join(currentPath, 'turbo.json'))) {
+          return currentPath;
+        }
+      } catch (e) {
+        // Continue searching if we can't read package.json
+      }
+    }
+    
+    currentPath = path.dirname(currentPath);
+  }
+  
+  // Fallback to current working directory if no project root found
+  return process.cwd();
+}
 
 export class KnowledgeGraphDB {
   private db: ReturnType<typeof drizzle>;
   private sqlite: Database.Database;
 
-  constructor(dbPath: string = './knowledge-graph.db') {
-    this.sqlite = new Database(dbPath);
+  constructor(dbPath?: string) {
+    const defaultPath = dbPath || path.join(findProjectRoot(), 'knowledge-graph.db');
+    this.sqlite = new Database(defaultPath);
     this.db = drizzle(this.sqlite);
     this.initializeTables();
   }

@@ -1,10 +1,13 @@
 {
-  "name": "@dev-atlas/mcp-knowledge-graph",
-  "version": "0.1.0",
+  "name": "dev-atlas-knowledge-graph",
+  "version": "0.2.0",
   "description": "MCP server for managing knowledge graph in SQLite",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "dev-atlas-knowledge-graph": "dist/index.js"
+  },
   "files": [
     "dist",
     "README.md"
