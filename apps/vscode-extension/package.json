@@ -20,6 +20,7 @@
   "categories": [
     "Other"
   ],
+  "icon": "icons/icon-128x128.png",
   "activationEvents": [
     "onCommand:dev-atlas.openKnowledgeGraph",
     "onCommand:dev-atlas.createNode",
@@ -65,7 +66,7 @@
         {
           "id": "dev-atlas",
           "title": "Dev Atlas",
-          "icon": "$(graph)"
+          "icon": "icons/icon-32x32.png"
         }
       ]
     },
