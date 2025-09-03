@@ -17,9 +17,7 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "categories": ["Other"],
   "icon": "icons/icon-128x128.png",
   "activationEvents": [
     "onCommand:dev-atlas.openKnowledgeGraph",

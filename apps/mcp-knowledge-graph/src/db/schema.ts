@@ -1,5 +1,5 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const nodes = sqliteTable('nodes', {
   id: text('id').primaryKey(),
@@ -12,8 +12,12 @@ export const nodes = sqliteTable('nodes', {
 
 export const edges = sqliteTable('edges', {
   id: text('id').primaryKey(),
-  sourceId: text('source_id').notNull().references(() => nodes.id),
-  targetId: text('target_id').notNull().references(() => nodes.id),
+  sourceId: text('source_id')
+    .notNull()
+    .references(() => nodes.id),
+  targetId: text('target_id')
+    .notNull()
+    .references(() => nodes.id),
   type: text('type').notNull(),
   properties: text('properties', { mode: 'json' }),
   weight: real('weight'),

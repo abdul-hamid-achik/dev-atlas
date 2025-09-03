@@ -1,33 +1,45 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ThemeToggle } from '@/components/theme-toggle';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   ArrowRight,
-  Github,
-  Download,
-  Terminal,
-  FileCode,
-  Settings,
-  Network,
-  Zap,
   Book,
-  ExternalLink,
-  Star,
   CheckCircle,
   Code2,
-  Database,
-  Puzzle,
-  Eye,
-  GitBranch,
-  Play,
   Command,
-  Package
-} from "lucide-react"
-import Link from "next/link"
+  Database,
+  Download,
+  ExternalLink,
+  Eye,
+  FileCode,
+  GitBranch,
+  Github,
+  Network,
+  Package,
+  Play,
+  Puzzle,
+  Settings,
+  Star,
+  Terminal,
+  Zap,
+} from 'lucide-react';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -77,8 +89,11 @@ export default function HomePage() {
 
             <p className="mx-auto mb-10 max-w-2xl text-lg text-slate-600 dark:text-slate-300 sm:text-xl">
               Transform how you organize and navigate development knowledge.
-              <strong className="text-slate-900 dark:text-slate-100"> MCP server + VS Code extension</strong> for
-              structured knowledge management.
+              <strong className="text-slate-900 dark:text-slate-100">
+                {' '}
+                MCP server + VS Code extension
+              </strong>{' '}
+              for structured knowledge management.
             </p>
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -134,28 +149,31 @@ export default function HomePage() {
             <div className="grid gap-8 md:grid-cols-3">
               {[
                 {
-                  step: "01",
+                  step: '01',
                   icon: <Package className="h-8 w-8 text-blue-600" />,
-                  title: "Install MCP Server",
-                  code: "npm install -g @dev-atlas/mcp-knowledge-graph",
-                  description: "Install the knowledge graph MCP server globally via npm"
+                  title: 'Install MCP Server',
+                  code: 'npm install -g @dev-atlas/mcp-knowledge-graph',
+                  description: 'Install the knowledge graph MCP server globally via npm',
                 },
                 {
-                  step: "02",
+                  step: '02',
                   icon: <Settings className="h-8 w-8 text-purple-600" />,
-                  title: "Configure Your AI",
-                  code: "Add to MCP config",
-                  description: "Configure Claude or Cursor to use the knowledge graph server"
+                  title: 'Configure Your AI',
+                  code: 'Add to MCP config',
+                  description: 'Configure Claude or Cursor to use the knowledge graph server',
                 },
                 {
-                  step: "03",
+                  step: '03',
                   icon: <Puzzle className="h-8 w-8 text-indigo-600" />,
-                  title: "Install Extension",
+                  title: 'Install Extension',
                   code: "Search 'Dev Atlas' in Extensions",
-                  description: "Install the VS Code extension for visual graph management"
-                }
-              ].map((item, index) => (
-                <Card key={index} className="group relative overflow-hidden border-0 bg-white/80 shadow-lg backdrop-blur dark:bg-slate-800/80">
+                  description: 'Install the VS Code extension for visual graph management',
+                },
+              ].map((item) => (
+                <Card
+                  key={item.step}
+                  className="group relative overflow-hidden border-0 bg-white/80 shadow-lg backdrop-blur dark:bg-slate-800/80"
+                >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 transition-opacity group-hover:opacity-100" />
                   <CardContent className="relative p-8">
                     <div className="mb-6 flex items-center space-x-4">
@@ -208,13 +226,13 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[
-                    "SQLite-based knowledge graph storage",
-                    "Full CRUD operations for nodes and edges",
-                    "Advanced search and graph traversal",
-                    "MCP protocol compliance",
-                    "TypeScript implementation"
-                  ].map((feature, index) => (
-                    <div key={index} className="flex items-center space-x-3">
+                    'SQLite-based knowledge graph storage',
+                    'Full CRUD operations for nodes and edges',
+                    'Advanced search and graph traversal',
+                    'MCP protocol compliance',
+                    'TypeScript implementation',
+                  ].map((feature) => (
+                    <div key={feature} className="flex items-center space-x-3">
                       <CheckCircle className="h-4 w-4 text-blue-600" />
                       <span className="text-sm">{feature}</span>
                     </div>
@@ -239,13 +257,13 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {[
-                    "Visual knowledge graph browser",
-                    "Integrated command palette",
-                    "Real-time graph visualization",
-                    "Node and edge creation UI",
-                    "Explorer panel integration"
-                  ].map((feature, index) => (
-                    <div key={index} className="flex items-center space-x-3">
+                    'Visual knowledge graph browser',
+                    'Integrated command palette',
+                    'Real-time graph visualization',
+                    'Node and edge creation UI',
+                    'Explorer panel integration',
+                  ].map((feature) => (
+                    <div key={feature} className="flex items-center space-x-3">
                       <CheckCircle className="h-4 w-4 text-purple-600" />
                       <span className="text-sm">{feature}</span>
                     </div>
@@ -272,7 +290,10 @@ export default function HomePage() {
 
             <div className="space-y-4">
               <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="mcp-setup" className="border rounded-lg px-6 bg-white dark:bg-slate-800">
+                <AccordionItem
+                  value="mcp-setup"
+                  className="border rounded-lg px-6 bg-white dark:bg-slate-800"
+                >
                   <AccordionTrigger className="text-left hover:no-underline">
                     <div className="flex items-center space-x-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
@@ -280,7 +301,9 @@ export default function HomePage() {
                       </div>
                       <div className="text-left">
                         <div className="font-semibold">MCP Server Configuration</div>
-                        <div className="text-sm text-slate-500">Connect your AI assistant to the knowledge graph</div>
+                        <div className="text-sm text-slate-500">
+                          Connect your AI assistant to the knowledge graph
+                        </div>
                       </div>
                     </div>
                   </AccordionTrigger>
@@ -291,8 +314,14 @@ export default function HomePage() {
                       </p>
                       <div className="overflow-hidden rounded-lg bg-slate-900 dark:bg-slate-800">
                         <div className="flex items-center justify-between bg-slate-800 px-4 py-2 dark:bg-slate-700">
-                          <span className="text-xs font-medium text-slate-400">mcp_settings.json</span>
-                          <Button size="sm" variant="ghost" className="h-6 px-2 text-slate-400 hover:text-slate-200">
+                          <span className="text-xs font-medium text-slate-400">
+                            mcp_settings.json
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-slate-400 hover:text-slate-200"
+                          >
                             <span className="text-xs">Copy</span>
                           </Button>
                         </div>
@@ -314,7 +343,10 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="vscode-features" className="border rounded-lg px-6 bg-white dark:bg-slate-800">
+                <AccordionItem
+                  value="vscode-features"
+                  className="border rounded-lg px-6 bg-white dark:bg-slate-800"
+                >
                   <AccordionTrigger className="text-left hover:no-underline">
                     <div className="flex items-center space-x-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900">
@@ -322,7 +354,9 @@ export default function HomePage() {
                       </div>
                       <div className="text-left">
                         <div className="font-semibold">VS Code Extension Commands</div>
-                        <div className="text-sm text-slate-500">Available commands and keyboard shortcuts</div>
+                        <div className="text-sm text-slate-500">
+                          Available commands and keyboard shortcuts
+                        </div>
                       </div>
                     </div>
                   </AccordionTrigger>
@@ -340,17 +374,29 @@ export default function HomePage() {
                           <TableRow>
                             <TableCell className="font-mono text-sm">Create Node</TableCell>
                             <TableCell>Add new knowledge nodes</TableCell>
-                            <TableCell><Badge variant="outline" className="font-mono text-xs">Ctrl+Shift+P</Badge></TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                Ctrl+Shift+P
+                              </Badge>
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell className="font-mono text-sm">Create Edge</TableCell>
                             <TableCell>Connect knowledge nodes</TableCell>
-                            <TableCell><Badge variant="outline" className="font-mono text-xs">Ctrl+Shift+E</Badge></TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                Ctrl+Shift+E
+                              </Badge>
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell className="font-mono text-sm">Open Visualizer</TableCell>
                             <TableCell>Launch graph visualization</TableCell>
-                            <TableCell><Badge variant="outline" className="font-mono text-xs">Ctrl+Shift+G</Badge></TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono text-xs">
+                                Ctrl+Shift+G
+                              </Badge>
+                            </TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>
@@ -358,7 +404,10 @@ export default function HomePage() {
                   </AccordionContent>
                 </AccordionItem>
 
-                <AccordionItem value="api-reference" className="border rounded-lg px-6 bg-white dark:bg-slate-800">
+                <AccordionItem
+                  value="api-reference"
+                  className="border rounded-lg px-6 bg-white dark:bg-slate-800"
+                >
                   <AccordionTrigger className="text-left hover:no-underline">
                     <div className="flex items-center space-x-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900">
@@ -373,12 +422,12 @@ export default function HomePage() {
                   <AccordionContent className="pt-4">
                     <div className="grid gap-3 sm:grid-cols-2">
                       {[
-                        { name: "create_entities", desc: "Create new knowledge entities" },
-                        { name: "create_relations", desc: "Create relationships between entities" },
-                        { name: "search_nodes", desc: "Search through the knowledge graph" },
-                        { name: "read_graph", desc: "Read the entire knowledge graph" }
-                      ].map((api, index) => (
-                        <Card key={index} className="border-0 bg-slate-50 dark:bg-slate-700/50">
+                        { name: 'create_entities', desc: 'Create new knowledge entities' },
+                        { name: 'create_relations', desc: 'Create relationships between entities' },
+                        { name: 'search_nodes', desc: 'Search through the knowledge graph' },
+                        { name: 'read_graph', desc: 'Read the entire knowledge graph' },
+                      ].map((api) => (
+                        <Card key={api.name} className="border-0 bg-slate-50 dark:bg-slate-700/50">
                           <CardContent className="p-4">
                             <div className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                               {api.name}
@@ -408,8 +457,8 @@ export default function HomePage() {
               </div>
               <h3 className="mb-4 text-3xl font-bold">Ready to transform your workflow?</h3>
               <p className="mx-auto mb-8 max-w-2xl text-lg text-blue-100">
-                Join developers who are already using structured knowledge graphs to
-                organize their development insights and accelerate their productivity.
+                Join developers who are already using structured knowledge graphs to organize their
+                development insights and accelerate their productivity.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Button size="lg" variant="secondary" className="group h-12 px-8">
@@ -417,7 +466,12 @@ export default function HomePage() {
                   Get Started Now
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
-                <Button size="lg" variant="outline" className="h-12 border-white/20 px-8 text-white hover:bg-white/10" asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 border-white/20 px-8 text-white hover:bg-white/10"
+                  asChild
+                >
                   <Link href="https://github.com/abdul-hamid-achik/dev-atlas">
                     <Github className="mr-2 h-4 w-4" />
                     Star on GitHub
@@ -430,5 +484,5 @@ export default function HomePage() {
         </div>
       </section>
     </div>
-  )
+  );
 }

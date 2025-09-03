@@ -78,7 +78,8 @@ export async function createNodeCommand() {
     });
 
     // Get the knowledge graph provider from the extension
-    const knowledgeGraphProvider = (global as any).devAtlasKnowledgeGraphProvider;
+    const knowledgeGraphProvider = (global as { [key: string]: unknown })
+      .devAtlasKnowledgeGraphProvider;
     if (!knowledgeGraphProvider) {
       vscode.window.showErrorMessage('Knowledge graph provider not available');
       log('Knowledge graph provider not found', 'error');
@@ -88,10 +89,9 @@ export async function createNodeCommand() {
     // Create the node using the provider
     await knowledgeGraphProvider.addNode(nodeData.label, nodeData.type);
     log(`Node created: ${nodeData.label} (${nodeData.type})`);
-
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessage = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const errorMessage = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
       vscode.window.showErrorMessage(`Validation error: ${errorMessage}`);
       log(`Validation error: ${errorMessage}`, 'error');
     } else {

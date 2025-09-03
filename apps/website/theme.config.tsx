@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 
 const config = {
   logo: <span>🗺️ Dev Atlas</span>,
@@ -15,7 +15,7 @@ const config = {
       <meta property="og:title" content="Dev Atlas" />
       <meta property="og:description" content="Knowledge Graph for Developers" />
     </>
-  )
-}
+  ),
+};
 
-export default config
+export default config;

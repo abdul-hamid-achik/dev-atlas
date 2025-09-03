@@ -24,6 +24,6 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "ignore": ["node_modules", "dist", "build", ".turbo"]
+    "ignore": ["node_modules", "dist", "build", ".turbo", ".next"]
   }
 }

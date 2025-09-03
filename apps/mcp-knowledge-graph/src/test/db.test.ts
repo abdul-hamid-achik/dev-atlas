@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { testDb } from './setup.js';
 
 describe('KnowledgeGraphDB', () => {
@@ -42,7 +42,7 @@ describe('KnowledgeGraphDB', () => {
       const technologyNodes = await testDb.queryNodes({ type: 'Technology' });
 
       expect(technologyNodes).toHaveLength(2);
-      expect(technologyNodes.every(node => node.type === 'Technology')).toBe(true);
+      expect(technologyNodes.every((node) => node.type === 'Technology')).toBe(true);
     });
   });
 
@@ -104,8 +104,8 @@ describe('KnowledgeGraphDB', () => {
       const neighbors = await testDb.getNeighbors(centerNode.id, 'out');
 
       expect(neighbors).toHaveLength(2);
-      expect(neighbors.map(n => n.node.label)).toContain('Express');
-      expect(neighbors.map(n => n.node.label)).toContain('PostgreSQL');
+      expect(neighbors.map((n) => n.node.label)).toContain('Express');
+      expect(neighbors.map((n) => n.node.label)).toContain('PostgreSQL');
     });
   });
 });

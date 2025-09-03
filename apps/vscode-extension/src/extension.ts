@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
-import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
-import { createNodeCommand } from './commands/createNode';
 import { createEdgeCommand } from './commands/createEdge';
+import { createNodeCommand } from './commands/createNode';
+import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
+import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
 
 // Create output channel for logging
 const outputChannel = vscode.window.createOutputChannel('Dev Atlas');
@@ -29,14 +29,16 @@ export function log(message: string, level: 'info' | 'warn' | 'error' = 'info') 
 export function activate(context: vscode.ExtensionContext) {
   log('Dev Atlas extension is now active!');
   log(`Extension path: ${context.extensionPath}`);
-  log(`Workspace folders: ${vscode.workspace.workspaceFolders?.map(f => f.uri.fsPath).join(', ') || 'None'}`);
+  log(
+    `Workspace folders: ${vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath).join(', ') || 'None'}`
+  );
 
   // Register the knowledge graph provider
   const provider = new KnowledgeGraphProvider();
   vscode.window.registerTreeDataProvider('dev-atlas-knowledge-graph', provider);
 
   // Store provider globally for commands to access
-  (global as any).devAtlasKnowledgeGraphProvider = provider;
+  (global as { [key: string]: unknown }).devAtlasKnowledgeGraphProvider = provider;
 
   log('Knowledge graph provider registered');
 
@@ -49,21 +51,15 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  const createNodeCmd = vscode.commands.registerCommand(
-    'dev-atlas.createNode',
-    () => {
-      log('Create node command triggered');
-      createNodeCommand();
-    }
-  );
+  const createNodeCmd = vscode.commands.registerCommand('dev-atlas.createNode', () => {
+    log('Create node command triggered');
+    createNodeCommand();
+  });
 
-  const createEdgeCmd = vscode.commands.registerCommand(
-    'dev-atlas.createEdge',
-    () => {
-      log('Create edge command triggered');
-      createEdgeCommand();
-    }
-  );
+  const createEdgeCmd = vscode.commands.registerCommand('dev-atlas.createEdge', () => {
+    log('Create edge command triggered');
+    createEdgeCommand();
+  });
 
   // Add commands to context
   context.subscriptions.push(
@@ -87,12 +83,12 @@ export function deactivate() {
   log('Dev Atlas extension is being deactivated');
 
   // Clean up resources
-  const provider = (global as any).devAtlasKnowledgeGraphProvider;
+  const provider = (global as { [key: string]: unknown }).devAtlasKnowledgeGraphProvider;
   if (provider && typeof provider.dispose === 'function') {
     provider.dispose();
     log('Provider disposed');
   }
 
-  delete (global as any).devAtlasKnowledgeGraphProvider;
+  (global as { [key: string]: unknown }).devAtlasKnowledgeGraphProvider = undefined;
   console.log('Dev Atlas extension is now deactivated!');
 }

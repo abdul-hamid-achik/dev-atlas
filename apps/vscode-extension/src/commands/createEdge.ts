@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
+import type { Node } from '../db/schema';
 import { log } from '../extension';
 
 const CreateEdgeSchema = z.object({
   sourceId: z.string().min(1, 'Source ID is required'),
   targetId: z.string().min(1, 'Target ID is required'),
   type: z.string().min(1, 'Edge type is required'),
-  properties: z.record(z.any()).optional(),
+  properties: z.record(z.unknown()).optional(),
   weight: z.number().optional(),
 });
 
@@ -14,7 +15,8 @@ export async function createEdgeCommand() {
   log('Create edge command started');
   try {
     // Get available nodes first
-    const knowledgeGraphProvider = (global as any).devAtlasKnowledgeGraphProvider;
+    const knowledgeGraphProvider = (global as { [key: string]: unknown })
+      .devAtlasKnowledgeGraphProvider;
     if (!knowledgeGraphProvider) {
       vscode.window.showErrorMessage('Knowledge graph provider not available');
       log('Knowledge graph provider not found', 'error');
@@ -23,7 +25,9 @@ export async function createEdgeCommand() {
 
     const nodes = knowledgeGraphProvider.getNodes();
     if (nodes.length < 2) {
-      vscode.window.showErrorMessage('At least 2 nodes are required to create an edge. Create some nodes first.');
+      vscode.window.showErrorMessage(
+        'At least 2 nodes are required to create an edge. Create some nodes first.'
+      );
       log('Not enough nodes to create edge', 'warn');
       return;
     }
@@ -33,15 +37,15 @@ export async function createEdgeCommand() {
       nodeId: string;
     }
 
-    const sourceNodeItems: NodeQuickPickItem[] = nodes.map((node: any) => ({
+    const sourceNodeItems: NodeQuickPickItem[] = nodes.map((node: Node) => ({
       label: node.label,
       description: `${node.type} - ${node.id}`,
       detail: node.id,
-      nodeId: node.id
+      nodeId: node.id,
     }));
 
     const selectedSourceNode = await vscode.window.showQuickPick(sourceNodeItems, {
-      placeHolder: 'Select source node'
+      placeHolder: 'Select source node',
     });
 
     if (!selectedSourceNode) {
@@ -56,16 +60,16 @@ export async function createEdgeCommand() {
 
     // Show quick pick for target node (excluding source node)
     const targetNodeItems: NodeQuickPickItem[] = nodes
-      .filter((node: any) => node.id !== sourceId)
-      .map((node: any) => ({
+      .filter((node: Node) => node.id !== sourceId)
+      .map((node: Node) => ({
         label: node.label,
         description: `${node.type} - ${node.id}`,
         detail: node.id,
-        nodeId: node.id
+        nodeId: node.id,
       }));
 
     const selectedTargetNode = await vscode.window.showQuickPick(targetNodeItems, {
-      placeHolder: 'Select target node'
+      placeHolder: 'Select target node',
     });
 
     if (!selectedTargetNode) {
@@ -102,8 +106,8 @@ export async function createEdgeCommand() {
         if (!value || value.trim().length === 0) {
           return null; // Weight is optional
         }
-        const num = parseFloat(value);
-        if (isNaN(num)) {
+        const num = Number.parseFloat(value);
+        if (Number.isNaN(num)) {
           return 'Weight must be a number';
         }
         return null;
@@ -112,7 +116,7 @@ export async function createEdgeCommand() {
 
     let weight: number | undefined;
     if (weightInput && weightInput.trim().length > 0) {
-      weight = parseFloat(weightInput);
+      weight = Number.parseFloat(weightInput);
     }
 
     // Show input box for properties (optional)
@@ -154,10 +158,9 @@ export async function createEdgeCommand() {
     // Create the edge using the provider
     await knowledgeGraphProvider.addEdge(edgeData.sourceId, edgeData.targetId, edgeData.type);
     log(`Edge created: ${edgeData.sourceId} -> ${edgeData.targetId} (${edgeData.type})`);
-
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessage = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const errorMessage = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
       vscode.window.showErrorMessage(`Validation error: ${errorMessage}`);
       log(`Validation error: ${errorMessage}`, 'error');
     } else {

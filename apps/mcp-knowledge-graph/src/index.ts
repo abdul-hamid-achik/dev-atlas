@@ -2,16 +2,15 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { KnowledgeGraphDB } from './db/index.js';
 import {
-  CreateNodeSchema,
   CreateEdgeSchema,
+  CreateNodeSchema,
+  QueryEdgesSchema,
   QueryNodesSchema,
-  QueryEdgesSchema
+  type CreateNode,
+  type CreateEdge,
 } from './types/schema.js';
 
 class KnowledgeGraphMCPServer {
@@ -124,7 +123,7 @@ class KnowledgeGraphMCPServer {
                   type: 'string',
                   enum: ['in', 'out', 'both'],
                   description: 'Direction of edges to follow',
-                  default: 'both'
+                  default: 'both',
                 },
               },
               required: ['nodeId'],
@@ -238,7 +237,7 @@ class KnowledgeGraphMCPServer {
                 types: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Filter by node types'
+                  description: 'Filter by node types',
                 },
               },
               required: ['query'],
@@ -266,13 +265,17 @@ class KnowledgeGraphMCPServer {
                 nodeIds: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Center node IDs for the subgraph'
+                  description: 'Center node IDs for the subgraph',
                 },
-                depth: { type: 'number', description: 'Depth to traverse from center nodes', default: 2 },
+                depth: {
+                  type: 'number',
+                  description: 'Depth to traverse from center nodes',
+                  default: 2,
+                },
                 includeEdgeTypes: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Only include edges of these types'
+                  description: 'Only include edges of these types',
                 },
               },
               required: ['nodeIds'],
@@ -280,26 +283,42 @@ class KnowledgeGraphMCPServer {
           },
           {
             name: 'analyze_file',
-            description: 'Analyze a source code file and extract entities (functions, classes, imports)',
+            description:
+              'Analyze a source code file and extract entities (functions, classes, imports)',
             inputSchema: {
               type: 'object',
               properties: {
                 filePath: { type: 'string', description: 'Path to the source code file' },
-                language: { type: 'string', description: 'Programming language (js, ts, py, etc.)' },
-                createNodes: { type: 'boolean', description: 'Whether to create nodes for discovered entities', default: false },
+                language: {
+                  type: 'string',
+                  description: 'Programming language (js, ts, py, etc.)',
+                },
+                createNodes: {
+                  type: 'boolean',
+                  description: 'Whether to create nodes for discovered entities',
+                  default: false,
+                },
               },
               required: ['filePath'],
             },
           },
           {
             name: 'extract_dependencies',
-            description: 'Extract dependencies from package files (package.json, requirements.txt, etc.)',
+            description:
+              'Extract dependencies from package files (package.json, requirements.txt, etc.)',
             inputSchema: {
               type: 'object',
               properties: {
                 filePath: { type: 'string', description: 'Path to the dependency file' },
-                createNodes: { type: 'boolean', description: 'Whether to create dependency nodes', default: false },
-                projectNodeId: { type: 'string', description: 'ID of project node to link dependencies to' },
+                createNodes: {
+                  type: 'boolean',
+                  description: 'Whether to create dependency nodes',
+                  default: false,
+                },
+                projectNodeId: {
+                  type: 'string',
+                  description: 'ID of project node to link dependencies to',
+                },
               },
               required: ['filePath'],
             },
@@ -312,8 +331,16 @@ class KnowledgeGraphMCPServer {
               properties: {
                 directoryPath: { type: 'string', description: 'Path to the directory to map' },
                 maxDepth: { type: 'number', description: 'Maximum depth to traverse', default: 3 },
-                includeFiles: { type: 'boolean', description: 'Include individual files', default: true },
-                createNodes: { type: 'boolean', description: 'Whether to create nodes for the structure', default: false },
+                includeFiles: {
+                  type: 'boolean',
+                  description: 'Include individual files',
+                  default: true,
+                },
+                createNodes: {
+                  type: 'boolean',
+                  description: 'Whether to create nodes for the structure',
+                  default: false,
+                },
               },
               required: ['directoryPath'],
             },
@@ -336,21 +363,30 @@ class KnowledgeGraphMCPServer {
                   type: 'string',
                   enum: ['json', 'dot', 'csv'],
                   description: 'Export format',
-                  default: 'json'
+                  default: 'json',
                 },
-                includeNodes: { type: 'boolean', description: 'Include nodes in export', default: true },
-                includeEdges: { type: 'boolean', description: 'Include edges in export', default: true },
+                includeNodes: {
+                  type: 'boolean',
+                  description: 'Include nodes in export',
+                  default: true,
+                },
+                includeEdges: {
+                  type: 'boolean',
+                  description: 'Include edges in export',
+                  default: true,
+                },
                 nodeTypes: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Filter by node types'
+                  description: 'Filter by node types',
                 },
               },
             },
           },
           {
             name: 'detect_patterns',
-            description: 'Detect design patterns, architectural patterns, and code smells in codebase',
+            description:
+              'Detect design patterns, architectural patterns, and code smells in codebase',
             inputSchema: {
               type: 'object',
               properties: {
@@ -358,9 +394,13 @@ class KnowledgeGraphMCPServer {
                 patternTypes: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Types of patterns to detect: design, architectural, code_smells'
+                  description: 'Types of patterns to detect: design, architectural, code_smells',
                 },
-                createNodes: { type: 'boolean', description: 'Create nodes for detected patterns', default: false },
+                createNodes: {
+                  type: 'boolean',
+                  description: 'Create nodes for detected patterns',
+                  default: false,
+                },
                 language: { type: 'string', description: 'Primary programming language hint' },
               },
               required: ['directoryPath'],
@@ -377,10 +417,18 @@ class KnowledgeGraphMCPServer {
                   type: 'array',
                   items: { type: 'string' },
                   description: 'Annotation types to extract: TODO, FIXME, HACK, NOTE, BUG',
-                  default: ['TODO', 'FIXME', 'HACK', 'NOTE', 'BUG']
+                  default: ['TODO', 'FIXME', 'HACK', 'NOTE', 'BUG'],
                 },
-                createNodes: { type: 'boolean', description: 'Create nodes for TODOs', default: false },
-                assignToFiles: { type: 'boolean', description: 'Link TODOs to their source files', default: true },
+                createNodes: {
+                  type: 'boolean',
+                  description: 'Create nodes for TODOs',
+                  default: false,
+                },
+                assignToFiles: {
+                  type: 'boolean',
+                  description: 'Link TODOs to their source files',
+                  default: true,
+                },
               },
               required: ['directoryPath'],
             },
@@ -395,17 +443,18 @@ class KnowledgeGraphMCPServer {
                 action: {
                   type: 'string',
                   enum: ['start', 'stop', 'status', 'sync'],
-                  description: 'Monitor action: start watching, stop watching, check status, or sync changes'
+                  description:
+                    'Monitor action: start watching, stop watching, check status, or sync changes',
                 },
                 includePatterns: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'File patterns to monitor (e.g., "*.js", "*.py")'
+                  description: 'File patterns to monitor (e.g., "*.js", "*.py")',
                 },
                 excludePatterns: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'File patterns to ignore (e.g., "node_modules/**", "*.log")'
+                  description: 'File patterns to ignore (e.g., "node_modules/**", "*.log")',
                 },
               },
               required: ['directoryPath', 'action'],
@@ -420,15 +469,23 @@ class KnowledgeGraphMCPServer {
                 nodeIds: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Node IDs to analyze for semantic relationships'
+                  description: 'Node IDs to analyze for semantic relationships',
                 },
                 analysisType: {
                   type: 'string',
                   enum: ['similarity', 'clustering', 'naming', 'usage_patterns'],
-                  description: 'Type of semantic analysis to perform'
+                  description: 'Type of semantic analysis to perform',
                 },
-                createRelationships: { type: 'boolean', description: 'Create new relationship edges', default: false },
-                threshold: { type: 'number', description: 'Similarity threshold (0-1)', default: 0.7 },
+                createRelationships: {
+                  type: 'boolean',
+                  description: 'Create new relationship edges',
+                  default: false,
+                },
+                threshold: {
+                  type: 'number',
+                  description: 'Similarity threshold (0-1)',
+                  default: 0.7,
+                },
               },
               required: ['nodeIds', 'analysisType'],
             },
@@ -543,7 +600,7 @@ class KnowledgeGraphMCPServer {
           case 'get_neighbors': {
             const { nodeId, direction = 'both' } = args as {
               nodeId: string;
-              direction?: 'in' | 'out' | 'both'
+              direction?: 'in' | 'out' | 'both';
             };
             const neighbors = await this.db.getNeighbors(nodeId, direction);
             return {
@@ -557,8 +614,15 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'update_node': {
-            const { id, label, properties } = args as { id: string; label?: string; properties?: any };
-            const updated = await this.db.updateNode(id, { label, properties });
+            const { id, label, properties } = args as {
+              id: string;
+              label?: string;
+              properties?: unknown;
+            };
+            const updated = await this.db.updateNode(id, {
+              label,
+              properties: properties as Record<string, unknown> | undefined
+            });
             if (!updated) {
               return {
                 content: [{ type: 'text', text: `Node with ID ${id} not found` }],
@@ -579,10 +643,14 @@ class KnowledgeGraphMCPServer {
             const { id, type, properties, weight } = args as {
               id: string;
               type?: string;
-              properties?: any;
+              properties?: unknown;
               weight?: number;
             };
-            const updated = await this.db.updateEdge(id, { type, properties, weight });
+            const updated = await this.db.updateEdge(id, {
+              type,
+              properties: properties as Record<string, unknown> | undefined,
+              weight
+            });
             if (!updated) {
               return {
                 content: [{ type: 'text', text: `Edge with ID ${id} not found` }],
@@ -638,33 +706,50 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'bulk_create_nodes': {
-            const { nodes } = args as { nodes: any[] };
+            const { nodes } = args as { nodes: CreateNode[] };
             const created = await this.db.bulkCreateNodes(nodes);
             return {
               content: [
                 {
                   type: 'text',
-                  text: `Created ${created.length} nodes:\n${JSON.stringify(created.map(n => ({ id: n.id, type: n.type, label: n.label })), null, 2)}`,
+                  text: `Created ${created.length} nodes:\n${JSON.stringify(
+                    created.map((n) => ({ id: n.id, type: n.type, label: n.label })),
+                    null,
+                    2
+                  )}`,
                 },
               ],
             };
           }
 
           case 'bulk_create_edges': {
-            const { edges } = args as { edges: any[] };
+            const { edges } = args as { edges: CreateEdge[] };
             const created = await this.db.bulkCreateEdges(edges);
             return {
               content: [
                 {
                   type: 'text',
-                  text: `Created ${created.length} edges:\n${JSON.stringify(created.map(e => ({ id: e.id, type: e.type, sourceId: e.sourceId, targetId: e.targetId })), null, 2)}`,
+                  text: `Created ${created.length} edges:\n${JSON.stringify(
+                    created.map((e) => ({
+                      id: e.id,
+                      type: e.type,
+                      sourceId: e.sourceId,
+                      targetId: e.targetId,
+                    })),
+                    null,
+                    2
+                  )}`,
                 },
               ],
             };
           }
 
           case 'search_nodes': {
-            const { query, limit = 20, types } = args as { query: string; limit?: number; types?: string[] };
+            const {
+              query,
+              limit = 20,
+              types,
+            } = args as { query: string; limit?: number; types?: string[] };
             const results = await this.db.searchNodes(query, { limit, types });
             return {
               content: [
@@ -677,7 +762,11 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'find_path': {
-            const { fromNodeId, toNodeId, maxDepth = 6 } = args as {
+            const {
+              fromNodeId,
+              toNodeId,
+              maxDepth = 6,
+            } = args as {
               fromNodeId: string;
               toNodeId: string;
               maxDepth?: number;
@@ -696,7 +785,11 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'get_subgraph': {
-            const { nodeIds, depth = 2, includeEdgeTypes } = args as {
+            const {
+              nodeIds,
+              depth = 2,
+              includeEdgeTypes,
+            } = args as {
               nodeIds: string[];
               depth?: number;
               includeEdgeTypes?: string[];
@@ -713,7 +806,11 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'analyze_file': {
-            const { filePath, language, createNodes = false } = args as {
+            const {
+              filePath,
+              language,
+              createNodes = false,
+            } = args as {
               filePath: string;
               language?: string;
               createNodes?: boolean;
@@ -730,12 +827,20 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'extract_dependencies': {
-            const { filePath, createNodes = false, projectNodeId } = args as {
+            const {
+              filePath,
+              createNodes = false,
+              projectNodeId,
+            } = args as {
               filePath: string;
               createNodes?: boolean;
               projectNodeId?: string;
             };
-            const dependencies = await this.db.extractDependencies(filePath, createNodes, projectNodeId);
+            const dependencies = await this.db.extractDependencies(
+              filePath,
+              createNodes,
+              projectNodeId
+            );
             return {
               content: [
                 {
@@ -747,13 +852,23 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'map_directory': {
-            const { directoryPath, maxDepth = 3, includeFiles = true, createNodes = false } = args as {
+            const {
+              directoryPath,
+              maxDepth = 3,
+              includeFiles = true,
+              createNodes = false,
+            } = args as {
               directoryPath: string;
               maxDepth?: number;
               includeFiles?: boolean;
               createNodes?: boolean;
             };
-            const structure = await this.db.mapDirectory(directoryPath, maxDepth, includeFiles, createNodes);
+            const structure = await this.db.mapDirectory(
+              directoryPath,
+              maxDepth,
+              includeFiles,
+              createNodes
+            );
             return {
               content: [
                 {
@@ -777,13 +892,22 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'export_graph': {
-            const { format = 'json', includeNodes = true, includeEdges = true, nodeTypes } = args as {
+            const {
+              format = 'json',
+              includeNodes = true,
+              includeEdges = true,
+              nodeTypes,
+            } = args as {
               format?: 'json' | 'dot' | 'csv';
               includeNodes?: boolean;
               includeEdges?: boolean;
               nodeTypes?: string[];
             };
-            const exported = await this.db.exportGraph(format, { includeNodes, includeEdges, nodeTypes });
+            const exported = await this.db.exportGraph(format, {
+              includeNodes,
+              includeEdges,
+              nodeTypes,
+            });
             return {
               content: [
                 {
@@ -795,13 +919,22 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'detect_patterns': {
-            const { directoryPath, patternTypes, createNodes = false, language } = args as {
+            const {
+              directoryPath,
+              patternTypes,
+              createNodes = false,
+              language,
+            } = args as {
               directoryPath: string;
               patternTypes?: string[];
               createNodes?: boolean;
               language?: string;
             };
-            const patterns = await this.db.detectPatterns(directoryPath, { patternTypes, createNodes, language });
+            const patterns = await this.db.detectPatterns(directoryPath, {
+              patternTypes,
+              createNodes,
+              language,
+            });
             return {
               content: [
                 {
@@ -813,13 +946,22 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'extract_todos': {
-            const { directoryPath, includeTypes = ['TODO', 'FIXME', 'HACK', 'NOTE', 'BUG'], createNodes = false, assignToFiles = true } = args as {
+            const {
+              directoryPath,
+              includeTypes = ['TODO', 'FIXME', 'HACK', 'NOTE', 'BUG'],
+              createNodes = false,
+              assignToFiles = true,
+            } = args as {
               directoryPath: string;
               includeTypes?: string[];
               createNodes?: boolean;
               assignToFiles?: boolean;
             };
-            const todos = await this.db.extractTodos(directoryPath, { includeTypes, createNodes, assignToFiles });
+            const todos = await this.db.extractTodos(directoryPath, {
+              includeTypes,
+              createNodes,
+              assignToFiles,
+            });
             return {
               content: [
                 {
@@ -837,7 +979,10 @@ class KnowledgeGraphMCPServer {
               includePatterns?: string[];
               excludePatterns?: string[];
             };
-            const result = await this.db.monitorChanges(directoryPath, action, { includePatterns, excludePatterns });
+            const result = await this.db.monitorChanges(directoryPath, action, {
+              includePatterns,
+              excludePatterns,
+            });
             return {
               content: [
                 {
@@ -849,13 +994,21 @@ class KnowledgeGraphMCPServer {
           }
 
           case 'semantic_analysis': {
-            const { nodeIds, analysisType, createRelationships = false, threshold = 0.7 } = args as {
+            const {
+              nodeIds,
+              analysisType,
+              createRelationships = false,
+              threshold = 0.7,
+            } = args as {
               nodeIds: string[];
               analysisType: 'similarity' | 'clustering' | 'naming' | 'usage_patterns';
               createRelationships?: boolean;
               threshold?: number;
             };
-            const analysis = await this.db.semanticAnalysis(nodeIds, analysisType, { createRelationships, threshold });
+            const analysis = await this.db.semanticAnalysis(nodeIds, analysisType, {
+              createRelationships,
+              threshold,
+            });
             return {
               content: [
                 {

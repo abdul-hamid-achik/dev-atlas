@@ -8,17 +8,8 @@
   "bin": {
     "dev-atlas-knowledge-graph": "dist/index.js"
   },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "knowledge-graph",
-    "sqlite",
-    "ai-assistant"
-  ],
+  "files": ["dist", "README.md"],
+  "keywords": ["mcp", "model-context-protocol", "knowledge-graph", "sqlite", "ai-assistant"],
   "license": "MIT",
   "repository": {
     "type": "git",

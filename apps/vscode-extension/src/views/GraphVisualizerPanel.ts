@@ -1,120 +1,124 @@
 import * as vscode from 'vscode';
-import { KnowledgeGraphProvider, KnowledgeGraphNode, KnowledgeGraphEdge } from './KnowledgeGraphProvider';
+import {
+  KnowledgeGraphEdge,
+  KnowledgeGraphNode,
+  type KnowledgeGraphProvider,
+} from './KnowledgeGraphProvider';
 
 export class GraphVisualizerPanel {
-    public static currentPanel: GraphVisualizerPanel | undefined;
-    public static readonly viewType = 'dev-atlas-graph-visualizer';
+  public static currentPanel: GraphVisualizerPanel | undefined;
+  public static readonly viewType = 'dev-atlas-graph-visualizer';
 
-    private readonly _panel: vscode.WebviewPanel;
-    private _disposables: vscode.Disposable[] = [];
+  private readonly _panel: vscode.WebviewPanel;
+  private _disposables: vscode.Disposable[] = [];
 
-    private constructor(
-        panel: vscode.WebviewPanel,
-        extensionUri: vscode.Uri,
-        private readonly provider: KnowledgeGraphProvider
-    ) {
-        this._panel = panel;
+  private constructor(
+    panel: vscode.WebviewPanel,
+    extensionUri: vscode.Uri,
+    private readonly provider: KnowledgeGraphProvider
+  ) {
+    this._panel = panel;
 
-        // Set the webview's initial html content
-        this._update();
+    // Set the webview's initial html content
+    this._update();
 
-        // Listen for when the panel is disposed
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    // Listen for when the panel is disposed
+    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-        // Handle messages from the webview
-        this._panel.webview.onDidReceiveMessage(
-            (message) => {
-                switch (message.command) {
-                    case 'alert':
-                        vscode.window.showInformationMessage(message.text);
-                        return;
-                    case 'nodeClicked':
-                        vscode.window.showInformationMessage(`Node clicked: ${message.nodeId}`);
-                        return;
-                    case 'edgeClicked':
-                        vscode.window.showInformationMessage(`Edge clicked: ${message.edgeId}`);
-                        return;
-                    case 'refreshGraph':
-                        this._update(); // Refresh the webview content
-                        vscode.window.showInformationMessage('Graph data refreshed');
-                        return;
-                }
-            },
-            null,
-            this._disposables
-        );
-    }
-
-    public static createOrShow(extensionUri: vscode.Uri, provider: KnowledgeGraphProvider) {
-        const column = vscode.window.activeTextEditor
-            ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
-
-        // If we already have a panel, show it.
-        if (GraphVisualizerPanel.currentPanel) {
-            GraphVisualizerPanel.currentPanel._panel.reveal(column);
-            GraphVisualizerPanel.currentPanel._update();
+    // Handle messages from the webview
+    this._panel.webview.onDidReceiveMessage(
+      (message) => {
+        switch (message.command) {
+          case 'alert':
+            vscode.window.showInformationMessage(message.text);
+            return;
+          case 'nodeClicked':
+            vscode.window.showInformationMessage(`Node clicked: ${message.nodeId}`);
+            return;
+          case 'edgeClicked':
+            vscode.window.showInformationMessage(`Edge clicked: ${message.edgeId}`);
+            return;
+          case 'refreshGraph':
+            this._update(); // Refresh the webview content
+            vscode.window.showInformationMessage('Graph data refreshed');
             return;
         }
+      },
+      null,
+      this._disposables
+    );
+  }
 
-        // Otherwise, create a new panel.
-        const panel = vscode.window.createWebviewPanel(
-            GraphVisualizerPanel.viewType,
-            'Knowledge Graph Visualizer',
-            column || vscode.ViewColumn.One,
-            {
-                enableScripts: true,
-                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
-            }
-        );
+  public static createOrShow(extensionUri: vscode.Uri, provider: KnowledgeGraphProvider) {
+    const column = vscode.window.activeTextEditor
+      ? vscode.window.activeTextEditor.viewColumn
+      : undefined;
 
-        GraphVisualizerPanel.currentPanel = new GraphVisualizerPanel(panel, extensionUri, provider);
+    // If we already have a panel, show it.
+    if (GraphVisualizerPanel.currentPanel) {
+      GraphVisualizerPanel.currentPanel._panel.reveal(column);
+      GraphVisualizerPanel.currentPanel._update();
+      return;
     }
 
-    public dispose() {
-        GraphVisualizerPanel.currentPanel = undefined;
+    // Otherwise, create a new panel.
+    const panel = vscode.window.createWebviewPanel(
+      GraphVisualizerPanel.viewType,
+      'Knowledge Graph Visualizer',
+      column || vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media')],
+      }
+    );
 
-        // Clean up our resources
-        this._panel.dispose();
+    GraphVisualizerPanel.currentPanel = new GraphVisualizerPanel(panel, extensionUri, provider);
+  }
 
-        while (this._disposables.length) {
-            const x = this._disposables.pop();
-            if (x) {
-                x.dispose();
-            }
-        }
+  public dispose() {
+    GraphVisualizerPanel.currentPanel = undefined;
+
+    // Clean up our resources
+    this._panel.dispose();
+
+    while (this._disposables.length) {
+      const x = this._disposables.pop();
+      if (x) {
+        x.dispose();
+      }
     }
+  }
 
-    private _update() {
-        const webview = this._panel.webview;
+  private _update() {
+    const webview = this._panel.webview;
 
-        this._panel.title = 'Knowledge Graph Visualizer';
-        this._panel.webview.html = this._getHtmlForWebview(webview);
-    }
+    this._panel.title = 'Knowledge Graph Visualizer';
+    this._panel.webview.html = this._getHtmlForWebview(webview);
+  }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
-        // Get the graph data from the provider
-        const nodes = this.provider.getNodes();
-        const edges = this.provider.getEdges();
+  private _getHtmlForWebview(webview: vscode.Webview) {
+    // Get the graph data from the provider
+    const nodes = this.provider.getNodes();
+    const edges = this.provider.getEdges();
 
-        // Convert to JSON for the webview
-        const graphData = {
-            nodes: nodes.map(node => ({
-                id: node.id,
-                label: node.label,
-                type: node.type,
-                group: this._getNodeGroup(node.type)
-            })),
-            edges: edges.map(edge => ({
-                id: edge.id,
-                source: edge.sourceId,
-                target: edge.targetId,
-                label: edge.label,
-                type: edge.type
-            }))
-        };
+    // Convert to JSON for the webview
+    const graphData = {
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        label: node.label,
+        type: node.type,
+        group: this._getNodeGroup(node.type),
+      })),
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.sourceId,
+        target: edge.targetId,
+        label: edge.label,
+        type: edge.type,
+      })),
+    };
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -664,25 +668,25 @@ export class GraphVisualizerPanel {
         </script>
     </body>
     </html>`;
-    }
+  }
 
-    private _getNodeGroup(nodeType: string): number {
-        // Map node types to numeric groups for visualization
-        const typeMap: { [key: string]: number } = {
-            'Technology': 1,
-            'Language': 2,
-            'Runtime': 3,
-            'Framework': 4,
-            'Library': 5,
-            'Tool': 6,
-            'Concept': 7,
-            'Person': 8,
-            'Project': 9,
-            'Organization': 10,
-            'Documentation': 11,
-            'Tutorial': 12,
-            'Other': 0
-        };
-        return typeMap[nodeType] || 0;
-    }
+  private _getNodeGroup(nodeType: string): number {
+    // Map node types to numeric groups for visualization
+    const typeMap: { [key: string]: number } = {
+      Technology: 1,
+      Language: 2,
+      Runtime: 3,
+      Framework: 4,
+      Library: 5,
+      Tool: 6,
+      Concept: 7,
+      Person: 8,
+      Project: 9,
+      Organization: 10,
+      Documentation: 11,
+      Tutorial: 12,
+      Other: 0,
+    };
+    return typeMap[nodeType] || 0;
+  }
 }

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { KnowledgeGraphDB } from '../db/index';
+import type { Edge, Node } from '../db/schema';
 import { log } from '../extension';
-import type { Node, Edge } from '../db/schema';
 
 export class KnowledgeGraphNode extends vscode.TreeItem {
   constructor(
@@ -37,9 +37,17 @@ export class KnowledgeGraphEdge extends vscode.TreeItem {
   iconPath = new vscode.ThemeIcon('arrow-right');
 }
 
-export class KnowledgeGraphProvider implements vscode.TreeDataProvider<KnowledgeGraphNode | KnowledgeGraphEdge> {
-  private _onDidChangeTreeData: vscode.EventEmitter<KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | void> = new vscode.EventEmitter<KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | void> = this._onDidChangeTreeData.event;
+export class KnowledgeGraphProvider
+  implements vscode.TreeDataProvider<KnowledgeGraphNode | KnowledgeGraphEdge>
+{
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | undefined
+  > = new vscode.EventEmitter<
+    KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | undefined
+  >();
+  readonly onDidChangeTreeData: vscode.Event<
+    KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | undefined
+  > = this._onDidChangeTreeData.event;
 
   private nodes: KnowledgeGraphNode[] = [];
   private edges: KnowledgeGraphEdge[] = [];
@@ -68,7 +76,6 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
 
       log(`Loaded ${this.nodes.length} nodes and ${this.edges.length} edges from database`);
       this._onDidChangeTreeData.fire();
-
     } catch (error) {
       log(`Failed to initialize database: ${error}`, 'error');
       vscode.window.showErrorMessage(`Dev Atlas: Failed to connect to database: ${error}`);
@@ -83,25 +90,21 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
     try {
       // Load nodes from database
       const dbNodes = await this.db.queryNodes({ limit: 100 });
-      this.nodes = dbNodes.map(node =>
-        new KnowledgeGraphNode(
-          node.label,
-          node.type,
-          node.id,
-          vscode.TreeItemCollapsibleState.Collapsed
-        )
+      this.nodes = dbNodes.map(
+        (node) =>
+          new KnowledgeGraphNode(
+            node.label,
+            node.type,
+            node.id,
+            vscode.TreeItemCollapsibleState.Collapsed
+          )
       );
 
       // Load edges from database
       const dbEdges = await this.db.queryEdges({ limit: 500 });
-      this.edges = dbEdges.map(edge =>
-        new KnowledgeGraphEdge(
-          `${edge.type}`,
-          edge.type,
-          edge.id,
-          edge.sourceId,
-          edge.targetId
-        )
+      this.edges = dbEdges.map(
+        (edge) =>
+          new KnowledgeGraphEdge(`${edge.type}`, edge.type, edge.id, edge.sourceId, edge.targetId)
       );
 
       log(`Loaded ${this.nodes.length} nodes and ${this.edges.length} edges from database`);
@@ -157,7 +160,7 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
             sourceId: nodeIds[edgeData.source],
             targetId: nodeIds[edgeData.target],
             type: edgeData.type,
-            properties: { label: edgeData.label }
+            properties: { label: edgeData.label },
           });
         }
       }
@@ -173,11 +176,36 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
     log('Using fallback sample data', 'warn');
     // Enhanced sample data for demonstration (fallback only)
     this.nodes = [
-      new KnowledgeGraphNode('React', 'Framework', 'node-1', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('TypeScript', 'Language', 'node-2', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('Node.js', 'Runtime', 'node-3', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('VS Code', 'Tool', 'node-4', vscode.TreeItemCollapsibleState.Collapsed),
-      new KnowledgeGraphNode('D3.js', 'Library', 'node-5', vscode.TreeItemCollapsibleState.Collapsed),
+      new KnowledgeGraphNode(
+        'React',
+        'Framework',
+        'node-1',
+        vscode.TreeItemCollapsibleState.Collapsed
+      ),
+      new KnowledgeGraphNode(
+        'TypeScript',
+        'Language',
+        'node-2',
+        vscode.TreeItemCollapsibleState.Collapsed
+      ),
+      new KnowledgeGraphNode(
+        'Node.js',
+        'Runtime',
+        'node-3',
+        vscode.TreeItemCollapsibleState.Collapsed
+      ),
+      new KnowledgeGraphNode(
+        'VS Code',
+        'Tool',
+        'node-4',
+        vscode.TreeItemCollapsibleState.Collapsed
+      ),
+      new KnowledgeGraphNode(
+        'D3.js',
+        'Library',
+        'node-5',
+        vscode.TreeItemCollapsibleState.Collapsed
+      ),
     ];
 
     this.edges = [
@@ -205,7 +233,9 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
     return element;
   }
 
-  getChildren(element?: KnowledgeGraphNode | KnowledgeGraphEdge): Thenable<(KnowledgeGraphNode | KnowledgeGraphEdge)[]> {
+  getChildren(
+    element?: KnowledgeGraphNode | KnowledgeGraphEdge
+  ): Thenable<(KnowledgeGraphNode | KnowledgeGraphEdge)[]> {
     if (!element) {
       // Return root level items (nodes)
       return Promise.resolve(this.nodes);
@@ -214,7 +244,7 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
     if (element instanceof KnowledgeGraphNode) {
       // Return edges connected to this node
       const connectedEdges = this.edges.filter(
-        edge => edge.sourceId === element.id || edge.targetId === element.id
+        (edge) => edge.sourceId === element.id || edge.targetId === element.id
       );
       return Promise.resolve(connectedEdges);
     }
@@ -258,7 +288,13 @@ export class KnowledgeGraphProvider implements vscode.TreeDataProvider<Knowledge
       log(`Adding new edge: ${sourceId} -> ${targetId} (${type})`);
       const edge = await this.db.createEdge({ sourceId, targetId, type });
 
-      const newEdge = new KnowledgeGraphEdge(type, edge.type, edge.id, edge.sourceId, edge.targetId);
+      const newEdge = new KnowledgeGraphEdge(
+        type,
+        edge.type,
+        edge.id,
+        edge.sourceId,
+        edge.targetId
+      );
       this.edges.push(newEdge);
       await this.refresh();
       vscode.window.showInformationMessage(`Edge "${type}" created successfully!`);
