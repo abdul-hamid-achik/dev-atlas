@@ -20,7 +20,7 @@ class KnowledgeGraphMCPServer {
 
   constructor() {
     console.error('[MCP Server] Starting Knowledge Graph MCP Server...');
-    
+
     this.server = new Server({
       name: 'knowledge-graph-mcp',
       version: '0.2.0',
@@ -28,7 +28,7 @@ class KnowledgeGraphMCPServer {
 
     this.db = new KnowledgeGraphDB();
     this.setupToolHandlers();
-    
+
     console.error('[MCP Server] Knowledge Graph MCP Server initialized');
   }
 

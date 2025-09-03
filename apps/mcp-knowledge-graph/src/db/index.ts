@@ -10,7 +10,7 @@ import type { Node, Edge, CreateNode, CreateEdge, QueryNodes, QueryEdges } from 
 
 function findProjectRoot(startPath: string = process.cwd()): string {
   let currentPath = path.resolve(startPath);
-  
+
   while (currentPath !== path.dirname(currentPath)) {
     // Check for project root indicators
     if (fs.existsSync(path.join(currentPath, 'package.json'))) {
@@ -26,10 +26,10 @@ function findProjectRoot(startPath: string = process.cwd()): string {
         // Continue searching if we can't read package.json
       }
     }
-    
+
     currentPath = path.dirname(currentPath);
   }
-  
+
   // Fallback to current working directory if no project root found
   return process.cwd();
 }
@@ -41,16 +41,16 @@ export class KnowledgeGraphDB {
   constructor(dbPath?: string) {
     const projectRoot = findProjectRoot();
     const defaultPath = dbPath || path.join(projectRoot, 'knowledge-graph.db');
-    
+
     // Log database initialization info
     console.error(`[KnowledgeGraph] Current working directory: ${process.cwd()}`);
     console.error(`[KnowledgeGraph] Project root detected: ${projectRoot}`);
     console.error(`[KnowledgeGraph] Database path: ${defaultPath}`);
-    
+
     this.sqlite = new Database(defaultPath);
     this.db = drizzle(this.sqlite);
     this.initializeTables();
-    
+
     console.error(`[KnowledgeGraph] Database initialized successfully`);
   }
 
