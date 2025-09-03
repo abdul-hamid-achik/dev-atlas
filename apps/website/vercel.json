@@ -1,5 +1,5 @@
 {
-  "git": {
-    "deploymentEnabled": false
-  }
+  "buildCommand": "cd ../.. && npm run build --filter=@dev-atlas/website",
+  "outputDirectory": ".next",
+  "installCommand": "cd ../.. && npm install"
 }
