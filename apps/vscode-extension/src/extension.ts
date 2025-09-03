@@ -4,6 +4,11 @@ import { createNodeCommand } from './commands/createNode';
 import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
 
+// Global provider interface for commands to access
+type GlobalWithProvider = typeof globalThis & {
+  devAtlasKnowledgeGraphProvider?: KnowledgeGraphProvider;
+};
+
 // Create output channel for logging
 const outputChannel = vscode.window.createOutputChannel('Dev Atlas');
 
@@ -38,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider('dev-atlas-knowledge-graph', provider);
 
   // Store provider globally for commands to access
-  (global as { [key: string]: unknown }).devAtlasKnowledgeGraphProvider = provider;
+  (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider = provider;
 
   log('Knowledge graph provider registered');
 
@@ -83,12 +88,12 @@ export function deactivate() {
   log('Dev Atlas extension is being deactivated');
 
   // Clean up resources
-  const provider = (global as { [key: string]: unknown }).devAtlasKnowledgeGraphProvider;
-  if (provider && typeof provider.dispose === 'function') {
+  const provider = (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider;
+  if (provider?.dispose) {
     provider.dispose();
     log('Provider disposed');
   }
 
-  (global as { [key: string]: unknown }).devAtlasKnowledgeGraphProvider = undefined;
+  (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider = undefined;
   console.log('Dev Atlas extension is now deactivated!');
 }

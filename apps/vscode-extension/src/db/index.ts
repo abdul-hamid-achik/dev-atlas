@@ -243,13 +243,13 @@ export class KnowledgeGraphDB {
       const stmt = this.sqlite.prepare(sql);
       const results = stmt.all(...params);
 
-      return results.map((node: Record<string, unknown>) => ({
-        id: node.id,
-        type: node.type,
-        label: node.label,
-        properties: node.properties ? JSON.parse(node.properties) : {},
-        createdAt: node.created_at ? new Date(node.created_at * 1000) : undefined,
-        updatedAt: node.updated_at ? new Date(node.updated_at * 1000) : undefined,
+      return (results as Record<string, unknown>[]).map((node) => ({
+        id: node.id as string,
+        type: node.type as string,
+        label: node.label as string,
+        properties: node.properties ? JSON.parse(node.properties as string) : {},
+        createdAt: node.created_at ? new Date((node.created_at as number) * 1000) : undefined,
+        updatedAt: node.updated_at ? new Date((node.updated_at as number) * 1000) : undefined,
       }));
     } catch (error) {
       log(`Failed to query nodes: ${error}`, 'error');
@@ -325,15 +325,15 @@ export class KnowledgeGraphDB {
       const stmt = this.sqlite.prepare(sql);
       const results = stmt.all(...params);
 
-      return results.map((edge: Record<string, unknown>) => ({
-        id: edge.id,
-        sourceId: edge.source_id,
-        targetId: edge.target_id,
-        type: edge.type,
-        properties: edge.properties ? JSON.parse(edge.properties) : {},
-        weight: edge.weight ?? undefined,
-        createdAt: edge.created_at ? new Date(edge.created_at * 1000) : undefined,
-        updatedAt: edge.updated_at ? new Date(edge.updated_at * 1000) : undefined,
+      return (results as Record<string, unknown>[]).map((edge) => ({
+        id: edge.id as string,
+        sourceId: edge.source_id as string,
+        targetId: edge.target_id as string,
+        type: edge.type as string,
+        properties: edge.properties ? JSON.parse(edge.properties as string) : {},
+        weight: edge.weight as number | undefined,
+        createdAt: edge.created_at ? new Date((edge.created_at as number) * 1000) : undefined,
+        updatedAt: edge.updated_at ? new Date((edge.updated_at as number) * 1000) : undefined,
       }));
     } catch (error) {
       log(`Failed to query edges: ${error}`, 'error');

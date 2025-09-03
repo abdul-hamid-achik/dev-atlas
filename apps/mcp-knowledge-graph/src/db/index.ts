@@ -15,6 +15,61 @@ import type {
 } from '../types/schema.js';
 import { edges, nodes } from './schema.js';
 
+// Database raw result interfaces
+interface DbNodeResult {
+  id: string;
+  type: string;
+  label: string;
+  properties: string | null;
+  created_at: number | null;
+  updated_at: number | null;
+}
+
+interface DbEdgeResult {
+  id: string;
+  source_id: string;
+  target_id: string;
+  type: string;
+  properties: string | null;
+  weight: number | null;
+  created_at: number | null;
+  updated_at: number | null;
+}
+
+// File system structure interface
+interface FileSystemStructure {
+  name: string;
+  type: 'file' | 'directory';
+  path: string;
+  size?: number;
+  children?: FileSystemStructure[];
+}
+
+// Code analysis result interfaces
+interface ExtractedFunction {
+  name: string;
+  line: number;
+  type: string;
+}
+
+interface ExtractedClass {
+  name: string;
+  line: number;
+  type: string;
+}
+
+interface ExtractedImport {
+  module: string;
+  line: number;
+  type: string;
+}
+
+interface ExtractedComment {
+  content: string;
+  line: number;
+  type: string;
+}
+
 function findProjectRoot(startPath: string = process.cwd()): string {
   let currentPath = path.resolve(startPath);
 
@@ -332,7 +387,26 @@ export class KnowledgeGraphDB {
         .from(edges)
         .innerJoin(nodes, eq(edges.sourceId, nodes.id))
         .where(eq(edges.targetId, nodeId));
-      results = results.concat(inResults);
+      results = results.concat(inResults.map((r) => ({
+        node: {
+          id: r.node.id,
+          type: r.node.type,
+          label: r.node.label,
+          properties: r.node.properties ? JSON.parse(r.node.properties as string) : {},
+          createdAt: r.node.createdAt ?? undefined,
+          updatedAt: r.node.updatedAt ?? undefined,
+        } as Node,
+        edge: {
+          id: r.edge.id,
+          sourceId: r.edge.sourceId,
+          targetId: r.edge.targetId,
+          type: r.edge.type,
+          properties: r.edge.properties ? JSON.parse(r.edge.properties as string) : {},
+          weight: r.edge.weight ?? undefined,
+          createdAt: r.edge.createdAt ?? undefined,
+          updatedAt: r.edge.updatedAt ?? undefined,
+        } as Edge,
+      })));
     }
 
     if (direction === 'out' || direction === 'both') {
@@ -341,7 +415,26 @@ export class KnowledgeGraphDB {
         .from(edges)
         .innerJoin(nodes, eq(edges.targetId, nodes.id))
         .where(eq(edges.sourceId, nodeId));
-      results = results.concat(outResults);
+      results = results.concat(outResults.map((r) => ({
+        node: {
+          id: r.node.id,
+          type: r.node.type,
+          label: r.node.label,
+          properties: r.node.properties ? JSON.parse(r.node.properties as string) : {},
+          createdAt: r.node.createdAt ?? undefined,
+          updatedAt: r.node.updatedAt ?? undefined,
+        } as Node,
+        edge: {
+          id: r.edge.id,
+          sourceId: r.edge.sourceId,
+          targetId: r.edge.targetId,
+          type: r.edge.type,
+          properties: r.edge.properties ? JSON.parse(r.edge.properties as string) : {},
+          weight: r.edge.weight ?? undefined,
+          createdAt: r.edge.createdAt ?? undefined,
+          updatedAt: r.edge.updatedAt ?? undefined,
+        } as Edge,
+      })));
     }
 
     return results.map((result) => ({
@@ -349,7 +442,7 @@ export class KnowledgeGraphDB {
         id: result.node.id,
         type: result.node.type,
         label: result.node.label,
-        properties: result.node.properties ? JSON.parse(result.node.properties as string) : {},
+        properties: typeof result.node.properties === 'string' ? JSON.parse(result.node.properties) : (result.node.properties as Record<string, unknown>) || {},
         createdAt: result.node.createdAt || undefined,
         updatedAt: result.node.updatedAt || undefined,
       },
@@ -358,7 +451,7 @@ export class KnowledgeGraphDB {
         sourceId: result.edge.sourceId,
         targetId: result.edge.targetId,
         type: result.edge.type,
-        properties: result.edge.properties ? JSON.parse(result.edge.properties as string) : {},
+        properties: typeof result.edge.properties === 'string' ? JSON.parse(result.edge.properties) : (result.edge.properties as Record<string, unknown>) || {},
         weight: result.edge.weight || undefined,
         createdAt: result.edge.createdAt || undefined,
         updatedAt: result.edge.updatedAt || undefined,
@@ -622,7 +715,7 @@ export class KnowledgeGraphDB {
     filePath: string,
     language?: string,
     createNodes = false
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     try {
       if (!fs.existsSync(filePath)) {
         throw new Error(`File not found: ${filePath}`);
@@ -642,11 +735,11 @@ export class KnowledgeGraphDB {
         language: detectedLanguage,
         size: content.length,
         lines: content.split('\n').length,
-        functions: [] as unknown[],
-        classes: [] as unknown[],
-        imports: [] as unknown[],
-        exports: [] as unknown[],
-        comments: [] as unknown[],
+        functions: [] as ExtractedFunction[],
+        classes: [] as ExtractedClass[],
+        imports: [] as ExtractedImport[],
+        exports: [] as ExtractedFunction[],
+        comments: [] as ExtractedComment[],
         fileNodeId: undefined as string | undefined,
       };
 
@@ -732,7 +825,7 @@ export class KnowledgeGraphDB {
     filePath: string,
     createNodes = false,
     projectNodeId?: string
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     try {
       if (!fs.existsSync(filePath)) {
         throw new Error(`File not found: ${filePath}`);
@@ -790,7 +883,7 @@ export class KnowledgeGraphDB {
     maxDepth = 3,
     includeFiles = true,
     createNodes = false
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     try {
       if (!fs.existsSync(directoryPath)) {
         throw new Error(`Directory not found: ${directoryPath}`);
@@ -798,12 +891,12 @@ export class KnowledgeGraphDB {
 
       const structure = this.buildDirectoryTree(directoryPath, 0, maxDepth, includeFiles);
 
-      if (createNodes) {
-        // Create nodes for the directory structure
-        await this.createDirectoryNodes(structure, null);
+      if (structure && createNodes) {
+        // Create nodes for the directory structure  
+        await this.createDirectoryNodes(structure as FileSystemStructure & Record<string, unknown>, null);
       }
 
-      return structure;
+      return structure as unknown as Record<string, unknown>;
     } catch (error) {
       throw new Error(
         `Failed to map directory: ${error instanceof Error ? error.message : String(error)}`
@@ -913,8 +1006,8 @@ export class KnowledgeGraphDB {
     return langMap[ext] || 'unknown';
   }
 
-  private extractJSFunctions(content: string): Array<{ name: string; line: number }> {
-    const functions: Array<{ name: string; line: number }> = [];
+  private extractJSFunctions(content: string): ExtractedFunction[] {
+    const functions: ExtractedFunction[] = [];
     const functionRegex =
       /(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|\w+)\s*=>|(\w+)\s*:\s*(?:async\s+)?(?:function|\([^)]*\)|\w+)\s*=>)/g;
     let match: RegExpExecArray | null = functionRegex.exec(content);
@@ -934,8 +1027,8 @@ export class KnowledgeGraphDB {
     return functions;
   }
 
-  private extractJSClasses(content: string): Array<{ name: string; line: number }> {
-    const classes: Array<{ name: string; line: number }> = [];
+  private extractJSClasses(content: string): ExtractedClass[] {
+    const classes: ExtractedClass[] = [];
     const classRegex = /class\s+(\w+)/g;
     let match: RegExpExecArray | null = classRegex.exec(content);
 
@@ -951,8 +1044,8 @@ export class KnowledgeGraphDB {
     return classes;
   }
 
-  private extractJSImports(content: string): Array<{ module: string; line: number }> {
-    const imports: Array<{ module: string; line: number }> = [];
+  private extractJSImports(content: string): ExtractedImport[] {
+    const imports: ExtractedImport[] = [];
     const importRegex =
       /import\s+(?:{[^}]+}|[^,\s{]+|[^,\s{]+\s*,\s*{[^}]+}|\*\s+as\s+\w+)\s+from\s+['"]([^'"]+)['"]/g;
     let match: RegExpExecArray | null = importRegex.exec(content);
@@ -969,8 +1062,8 @@ export class KnowledgeGraphDB {
     return imports;
   }
 
-  private extractJSExports(content: string): Array<{ name: string; line: number }> {
-    const exports: Array<{ name: string; line: number }> = [];
+  private extractJSExports(content: string): ExtractedFunction[] {
+    const exports: Array<{ name: string; line: number; type: string }> = [];
     const exportRegex =
       /export\s+(?:default\s+)?(?:function\s+(\w+)|class\s+(\w+)|const\s+(\w+)|let\s+(\w+)|var\s+(\w+))/g;
     let match: RegExpExecArray | null = exportRegex.exec(content);
@@ -990,8 +1083,8 @@ export class KnowledgeGraphDB {
     return exports;
   }
 
-  private extractPythonFunctions(content: string): Array<{ name: string; line: number }> {
-    const functions: Array<{ name: string; line: number }> = [];
+  private extractPythonFunctions(content: string): ExtractedFunction[] {
+    const functions: ExtractedFunction[] = [];
     const functionRegex = /def\s+(\w+)/g;
     let match: RegExpExecArray | null = functionRegex.exec(content);
 
@@ -1007,8 +1100,8 @@ export class KnowledgeGraphDB {
     return functions;
   }
 
-  private extractPythonClasses(content: string): Array<{ name: string; line: number }> {
-    const classes: Array<{ name: string; line: number }> = [];
+  private extractPythonClasses(content: string): ExtractedClass[] {
+    const classes: ExtractedClass[] = [];
     const classRegex = /class\s+(\w+)/g;
     let match: RegExpExecArray | null = classRegex.exec(content);
 
@@ -1027,7 +1120,7 @@ export class KnowledgeGraphDB {
   private extractPythonImports(
     content: string
   ): Array<{ module: string; line: number; type: string }> {
-    const imports: Array<{ module: string; line: number; type: string }> = [];
+    const imports: ExtractedImport[] = [];
     const importRegex = /(?:from\s+(\S+)\s+)?import\s+([^#\n]+)/g;
     let match: RegExpExecArray | null = importRegex.exec(content);
 
@@ -1049,14 +1142,14 @@ export class KnowledgeGraphDB {
     currentDepth: number,
     maxDepth: number,
     includeFiles: boolean
-  ): Record<string, unknown> | null {
+  ): FileSystemStructure | null {
     if (currentDepth > maxDepth) return null;
 
     const stats = fs.statSync(dirPath);
     const name = path.basename(dirPath);
 
     if (stats.isDirectory()) {
-      const children: Record<string, unknown>[] = [];
+      const children: FileSystemStructure[] = [];
       try {
         const items = fs.readdirSync(dirPath);
         for (const item of items) {
@@ -1104,10 +1197,10 @@ export class KnowledgeGraphDB {
   ): Promise<string> {
     const node = await this.createNode({
       type: structure.type === 'directory' ? 'Directory' : 'File',
-      label: structure.name,
+      label: structure.name as string,
       properties: {
         path: structure.path,
-        ...(structure.size && { size: structure.size }),
+        ...(('size' in structure && structure.size) ? { size: structure.size as number } : {}),
       },
     });
 
@@ -1119,8 +1212,9 @@ export class KnowledgeGraphDB {
       });
     }
 
-    if (structure.children) {
-      for (const child of structure.children) {
+    const structureObj = structure as Record<string, unknown>;
+    if (structureObj.children) {
+      for (const child of (structureObj.children as Record<string, unknown>[]) || []) {
         await this.createDirectoryNodes(child, node.id);
       }
     }
@@ -1132,7 +1226,7 @@ export class KnowledgeGraphDB {
   async detectPatterns(
     directoryPath: string,
     options: { patternTypes?: string[]; createNodes?: boolean; language?: string } = {}
-  ): Promise<unknown[]> {
+  ): Promise<Array<Record<string, unknown>>> {
     try {
       const {
         patternTypes = ['design', 'architectural', 'code_smells'],
@@ -1178,7 +1272,7 @@ export class KnowledgeGraphDB {
 
           // Link to relevant files
           if (pattern.fileNodes) {
-            for (const fileNodeId of pattern.fileNodes) {
+            for (const fileNodeId of (pattern as any).fileNodes || []) {
               await this.createEdge({
                 sourceId: fileNodeId,
                 targetId: patternNode.id,
@@ -1201,7 +1295,7 @@ export class KnowledgeGraphDB {
   async extractTodos(
     directoryPath: string,
     options: { includeTypes?: string[]; createNodes?: boolean; assignToFiles?: boolean } = {}
-  ): Promise<unknown[]> {
+  ): Promise<Array<Record<string, unknown>>> {
     try {
       const {
         includeTypes = ['TODO', 'FIXME', 'HACK', 'NOTE', 'BUG'],
@@ -1225,7 +1319,7 @@ export class KnowledgeGraphDB {
         for (const todo of todos) {
           const todoNode = await this.createNode({
             type: 'Todo',
-            label: `${todo.type}: ${todo.text.substring(0, 50)}...`,
+            label: `${(todo as any).type}: ${(todo as any).text.substring(0, 50)}...`,
             properties: {
               ...todo,
               extractedAt: new Date().toISOString(),
@@ -1261,14 +1355,14 @@ export class KnowledgeGraphDB {
     }
   }
 
-  private changeMonitors = new Map<string, unknown>();
+  private changeMonitors = new Map<string, Record<string, unknown>>();
   private lastSyncTimes = new Map<string, number>();
 
   async monitorChanges(
     directoryPath: string,
     action: 'start' | 'stop' | 'status' | 'sync',
     options: { includePatterns?: string[]; excludePatterns?: string[] } = {}
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     try {
       const {
         includePatterns = ['**/*.js', '**/*.ts', '**/*.py', '**/*.java'],
@@ -1335,7 +1429,7 @@ export class KnowledgeGraphDB {
           for (const file of changedFiles) {
             try {
               // Re-analyze changed file
-              await this.analyzeFile(file.path, undefined, true);
+              await this.analyzeFile((file as any).path, undefined, true);
               processed++;
             } catch (err) {
               console.error(`Failed to re-analyze ${file.path}:`, err);
@@ -1366,7 +1460,7 @@ export class KnowledgeGraphDB {
     nodeIds: string[],
     analysisType: 'similarity' | 'clustering' | 'naming' | 'usage_patterns',
     options: { createRelationships?: boolean; threshold?: number } = {}
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     try {
       const { createRelationships = false, threshold = 0.7 } = options;
 
@@ -1385,19 +1479,19 @@ export class KnowledgeGraphDB {
 
       switch (analysisType) {
         case 'similarity':
-          results = await this.analyzeSimilarity(nodes, threshold, createRelationships);
+          results = (await this.analyzeSimilarity(nodes, threshold, createRelationships)) || {};
           break;
 
         case 'clustering':
-          results = await this.analyzeClustering(nodes, createRelationships);
+          results = (await this.analyzeClustering(nodes, createRelationships)) || {};
           break;
 
         case 'naming':
-          results = await this.analyzeNaming(nodes);
+          results = (await this.analyzeNaming(nodes)) || {};
           break;
 
         case 'usage_patterns':
-          results = await this.analyzeUsagePatterns(nodes, createRelationships);
+          results = (await this.analyzeUsagePatterns(nodes, createRelationships)) || {};
           break;
       }
 
@@ -1416,7 +1510,7 @@ export class KnowledgeGraphDB {
   }
 
   // Helper methods for pattern detection
-  private detectDesignPatterns(filePath: string, content: string, language: string): unknown[] {
+  private detectDesignPatterns(filePath: string, content: string, language: string): Array<Record<string, unknown>> {
     const patterns = [];
 
     // Singleton pattern detection
@@ -1473,7 +1567,7 @@ export class KnowledgeGraphDB {
     filePath: string,
     content: string,
     language: string
-  ): unknown[] {
+  ): Array<Record<string, unknown>> {
     const patterns = [];
 
     // MVC pattern detection
@@ -1527,7 +1621,7 @@ export class KnowledgeGraphDB {
     return patterns;
   }
 
-  private detectCodeSmells(filePath: string, content: string, language: string): unknown[] {
+  private detectCodeSmells(filePath: string, content: string, language: string): Array<Record<string, unknown>> {
     const smells = [];
     const lines = content.split('\n');
 
@@ -1584,7 +1678,7 @@ export class KnowledgeGraphDB {
     content: string,
     filePath: string,
     includeTypes: string[]
-  ): unknown[] {
+  ): Array<Record<string, unknown>> {
     const todos = [];
     const lines = content.split('\n');
 
@@ -1617,7 +1711,7 @@ export class KnowledgeGraphDB {
     sinceTime: number,
     includePatterns: string[],
     excludePatterns: string[]
-  ): unknown[] {
+  ): Array<Record<string, unknown>> {
     const changedFiles = [];
 
     try {
@@ -1655,7 +1749,7 @@ export class KnowledgeGraphDB {
     nodes: Node[],
     threshold: number,
     createRelationships: boolean
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     const similarities = [];
 
     for (let i = 0; i < nodes.length; i++) {
@@ -1688,7 +1782,7 @@ export class KnowledgeGraphDB {
   private async analyzeClustering(
     nodes: Node[],
     createRelationships: boolean
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     // Simple clustering by type and properties
     const clusters = new Map<string, Node[]>();
 
@@ -1709,13 +1803,13 @@ export class KnowledgeGraphDB {
     return { clusters: results };
   }
 
-  private async analyzeNaming(nodes: Node[]): Promise<Record<string, unknown>> {
+  private async analyzeNaming(nodes: Node[]): Promise<Record<string, unknown> | null> {
     const namingPatterns = {
       camelCase: 0,
       snake_case: 0,
       PascalCase: 0,
       'kebab-case': 0,
-      inconsistent: [] as string[],
+      inconsistent: [] as Array<Record<string, unknown>>,
     };
 
     for (const node of nodes) {
@@ -1743,11 +1837,11 @@ export class KnowledgeGraphDB {
   private async analyzeUsagePatterns(
     nodes: Node[],
     createRelationships: boolean
-  ): Promise<Record<string, unknown>> {
+  ): Promise<Record<string, unknown> | null> {
     const patterns = {
-      highlyConnected: [] as Node[],
-      isolated: [] as Node[],
-      hubs: [] as Node[],
+      highlyConnected: [] as Array<Record<string, unknown>>,
+      isolated: [] as string[],
+      hubs: [] as Array<Record<string, unknown>>,
     };
 
     for (const node of nodes) {
@@ -1958,7 +2052,7 @@ export class KnowledgeGraphDB {
       try {
         return operation();
       } catch (error: unknown) {
-        const errorMessage = error?.message || String(error);
+        const errorMessage = (error as Error)?.message || String(error);
 
         // Check if it's a database busy/locked error
         if (

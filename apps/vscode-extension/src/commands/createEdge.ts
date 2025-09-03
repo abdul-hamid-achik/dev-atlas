@@ -2,6 +2,12 @@ import * as vscode from 'vscode';
 import { z } from 'zod';
 import type { Node } from '../db/schema';
 import { log } from '../extension';
+import type { KnowledgeGraphProvider } from '../views/KnowledgeGraphProvider';
+
+// Global provider type
+type GlobalWithProvider = typeof globalThis & {
+  devAtlasKnowledgeGraphProvider?: KnowledgeGraphProvider;
+};
 
 const CreateEdgeSchema = z.object({
   sourceId: z.string().min(1, 'Source ID is required'),
@@ -15,8 +21,7 @@ export async function createEdgeCommand() {
   log('Create edge command started');
   try {
     // Get available nodes first
-    const knowledgeGraphProvider = (global as { [key: string]: unknown })
-      .devAtlasKnowledgeGraphProvider;
+    const knowledgeGraphProvider = (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider;
     if (!knowledgeGraphProvider) {
       vscode.window.showErrorMessage('Knowledge graph provider not available');
       log('Knowledge graph provider not found', 'error');

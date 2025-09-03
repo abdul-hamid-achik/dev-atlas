@@ -75,7 +75,7 @@ export class KnowledgeGraphProvider
       }
 
       log(`Loaded ${this.nodes.length} nodes and ${this.edges.length} edges from database`);
-      this._onDidChangeTreeData.fire();
+      this._onDidChangeTreeData.fire(undefined);
     } catch (error) {
       log(`Failed to initialize database: ${error}`, 'error');
       vscode.window.showErrorMessage(`Dev Atlas: Failed to connect to database: ${error}`);
@@ -222,7 +222,7 @@ export class KnowledgeGraphProvider
         await this.loadDataFromDatabase();
         log('Data refreshed successfully');
       }
-      this._onDidChangeTreeData.fire();
+      this._onDidChangeTreeData.fire(undefined);
     } catch (error) {
       log(`Failed to refresh data: ${error}`, 'error');
       vscode.window.showErrorMessage(`Dev Atlas: Failed to refresh data: ${error}`);

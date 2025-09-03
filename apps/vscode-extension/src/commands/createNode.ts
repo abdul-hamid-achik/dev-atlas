@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import { z } from 'zod';
 import { log } from '../extension';
+import type { KnowledgeGraphProvider } from '../views/KnowledgeGraphProvider';
+
+// Global provider type
+type GlobalWithProvider = typeof globalThis & {
+  devAtlasKnowledgeGraphProvider?: KnowledgeGraphProvider;
+};
 
 const CreateNodeSchema = z.object({
   type: z.string().min(1, 'Type is required'),
@@ -78,8 +84,7 @@ export async function createNodeCommand() {
     });
 
     // Get the knowledge graph provider from the extension
-    const knowledgeGraphProvider = (global as { [key: string]: unknown })
-      .devAtlasKnowledgeGraphProvider;
+    const knowledgeGraphProvider = (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider;
     if (!knowledgeGraphProvider) {
       vscode.window.showErrorMessage('Knowledge graph provider not available');
       log('Knowledge graph provider not found', 'error');
