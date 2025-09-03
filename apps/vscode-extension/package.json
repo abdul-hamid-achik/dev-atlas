@@ -1,5 +1,5 @@
 {
-  "name": "dev-atlas-extension",
+  "name": "@dev-atlas/vscode-extension",
   "displayName": "Dev Atlas",
   "description": "Dev Atlas - Knowledge Graph Extension for VS Code/Cursor",
   "version": "0.1.0",

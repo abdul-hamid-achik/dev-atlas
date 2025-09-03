@@ -1,6 +1,7 @@
 {
   "name": "@dev-atlas/website",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "description": "Dev Atlas documentation and landing page",
   "scripts": {
