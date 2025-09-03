@@ -206,35 +206,46 @@ export class KnowledgeGraphDB {
 
     async queryNodes(query: QueryNodes = {}): Promise<Node[]> {
         try {
-            let dbQuery = this.db.select().from(nodes);
+            let sql = 'SELECT * FROM nodes';
+            const params: any[] = [];
+            const conditions: string[] = [];
 
             if (query.type) {
-                dbQuery = dbQuery.where(eq(nodes.type, query.type));
+                conditions.push('type = ?');
+                params.push(query.type);
             }
 
             if (query.label) {
-                dbQuery = dbQuery.where(like(nodes.label, `%${query.label}%`));
+                conditions.push('label LIKE ?');
+                params.push(`%${query.label}%`);
             }
 
-            dbQuery = dbQuery.orderBy(desc(nodes.createdAt));
+            if (conditions.length > 0) {
+                sql += ' WHERE ' + conditions.join(' AND ');
+            }
+
+            sql += ' ORDER BY created_at DESC';
 
             if (query.limit) {
-                dbQuery = dbQuery.limit(query.limit);
+                sql += ' LIMIT ?';
+                params.push(query.limit);
             }
 
             if (query.offset) {
-                dbQuery = dbQuery.offset(query.offset);
+                sql += ' OFFSET ?';
+                params.push(query.offset);
             }
 
-            const results = await dbQuery;
+            const stmt = this.sqlite.prepare(sql);
+            const results = stmt.all(...params);
 
-            return results.map(node => ({
+            return results.map((node: any) => ({
                 id: node.id,
                 type: node.type,
                 label: node.label,
-                properties: node.properties ? JSON.parse(node.properties as string) : {},
-                createdAt: node.createdAt ? new Date(node.createdAt * 1000) : undefined,
-                updatedAt: node.updatedAt ? new Date(node.updatedAt * 1000) : undefined,
+                properties: node.properties ? JSON.parse(node.properties) : {},
+                createdAt: node.created_at ? new Date(node.created_at * 1000) : undefined,
+                updatedAt: node.updated_at ? new Date(node.updated_at * 1000) : undefined,
             }));
         } catch (error) {
             log(`Failed to query nodes: ${error}`, 'error');
@@ -272,38 +283,53 @@ export class KnowledgeGraphDB {
 
     async queryEdges(query: QueryEdges = {}): Promise<Edge[]> {
         try {
-            let dbQuery = this.db.select().from(edges);
+            let sql = 'SELECT * FROM edges';
+            const params: any[] = [];
+            const conditions: string[] = [];
 
-            const conditions = [];
-            if (query.sourceId) conditions.push(eq(edges.sourceId, query.sourceId));
-            if (query.targetId) conditions.push(eq(edges.targetId, query.targetId));
-            if (query.type) conditions.push(eq(edges.type, query.type));
-
-            if (conditions.length > 0) {
-                dbQuery = dbQuery.where(and(...conditions));
+            if (query.sourceId) {
+                conditions.push('source_id = ?');
+                params.push(query.sourceId);
             }
 
-            dbQuery = dbQuery.orderBy(desc(edges.createdAt));
+            if (query.targetId) {
+                conditions.push('target_id = ?');
+                params.push(query.targetId);
+            }
+
+            if (query.type) {
+                conditions.push('type = ?');
+                params.push(query.type);
+            }
+
+            if (conditions.length > 0) {
+                sql += ' WHERE ' + conditions.join(' AND ');
+            }
+
+            sql += ' ORDER BY created_at DESC';
 
             if (query.limit) {
-                dbQuery = dbQuery.limit(query.limit);
+                sql += ' LIMIT ?';
+                params.push(query.limit);
             }
 
             if (query.offset) {
-                dbQuery = dbQuery.offset(query.offset);
+                sql += ' OFFSET ?';
+                params.push(query.offset);
             }
 
-            const results = await dbQuery;
+            const stmt = this.sqlite.prepare(sql);
+            const results = stmt.all(...params);
 
-            return results.map(edge => ({
+            return results.map((edge: any) => ({
                 id: edge.id,
-                sourceId: edge.sourceId,
-                targetId: edge.targetId,
+                sourceId: edge.source_id,
+                targetId: edge.target_id,
                 type: edge.type,
-                properties: edge.properties ? JSON.parse(edge.properties as string) : {},
+                properties: edge.properties ? JSON.parse(edge.properties) : {},
                 weight: edge.weight ?? undefined,
-                createdAt: edge.createdAt ? new Date(edge.createdAt * 1000) : undefined,
-                updatedAt: edge.updatedAt ? new Date(edge.updatedAt * 1000) : undefined,
+                createdAt: edge.created_at ? new Date(edge.created_at * 1000) : undefined,
+                updatedAt: edge.updated_at ? new Date(edge.updated_at * 1000) : undefined,
             }));
         } catch (error) {
             log(`Failed to query edges: ${error}`, 'error');

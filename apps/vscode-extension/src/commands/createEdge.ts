@@ -29,11 +29,15 @@ export async function createEdgeCommand() {
     }
 
     // Show quick pick for source node
-    const sourceNodeItems = nodes.map(node => ({
+    interface NodeQuickPickItem extends vscode.QuickPickItem {
+      nodeId: string;
+    }
+
+    const sourceNodeItems: NodeQuickPickItem[] = nodes.map((node: any) => ({
       label: node.label,
       description: `${node.type} - ${node.id}`,
       detail: node.id,
-      node: node
+      nodeId: node.id
     }));
 
     const selectedSourceNode = await vscode.window.showQuickPick(sourceNodeItems, {
@@ -44,20 +48,20 @@ export async function createEdgeCommand() {
       return;
     }
 
-    const sourceId = selectedSourceNode.node.id;
+    const sourceId = selectedSourceNode.nodeId;
 
     if (!sourceId) {
       return;
     }
 
     // Show quick pick for target node (excluding source node)
-    const targetNodeItems = nodes
-      .filter(node => node.id !== sourceId)
-      .map(node => ({
+    const targetNodeItems: NodeQuickPickItem[] = nodes
+      .filter((node: any) => node.id !== sourceId)
+      .map((node: any) => ({
         label: node.label,
         description: `${node.type} - ${node.id}`,
         detail: node.id,
-        node: node
+        nodeId: node.id
       }));
 
     const selectedTargetNode = await vscode.window.showQuickPick(targetNodeItems, {
@@ -68,7 +72,7 @@ export async function createEdgeCommand() {
       return;
     }
 
-    const targetId = selectedTargetNode.node.id;
+    const targetId = selectedTargetNode.nodeId;
 
     if (!targetId) {
       return;
