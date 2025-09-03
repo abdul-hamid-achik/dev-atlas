@@ -9,7 +9,6 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "biome check src/",
-    "test": "vitest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -20,7 +19,6 @@
   },
   "devDependencies": {
     "@types/uuid": "^9.0.7",
-    "typescript": "^5.2.2",
-    "vitest": "^3.2.4"
+    "typescript": "^5.2.2"
   }
 }

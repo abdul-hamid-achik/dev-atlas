@@ -17,7 +17,9 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "icon": "icons/icon-128x128.png",
   "activationEvents": [
     "onCommand:dev-atlas.openKnowledgeGraph",
@@ -82,7 +84,6 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "biome check src/",
-    "test": "vitest",
     "clean": "rm -rf dist",
     "package": "vsce package"
   },
@@ -99,7 +100,6 @@
     "@vscode/test-electron": "^2.3.0",
     "semantic-release": "^22.0.12",
     "typescript": "^5.2.2",
-    "vitest": "^3.2.4",
     "vsce": "^2.15.0"
   },
   "dependencies": {
