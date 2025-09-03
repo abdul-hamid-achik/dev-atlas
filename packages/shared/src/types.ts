@@ -13,7 +13,7 @@ export const NodeTypeSchema = z.enum([
   'Organization',
   'Documentation',
   'Tutorial',
-  'Other'
+  'Other',
 ]);
 
 export const EdgeTypeSchema = z.enum([
@@ -29,7 +29,7 @@ export const EdgeTypeSchema = z.enum([
   'maintains',
   'contributes_to',
   'references',
-  'other'
+  'other',
 ]);
 
 export type NodeType = z.infer<typeof NodeTypeSchema>;

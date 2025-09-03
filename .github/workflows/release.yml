@@ -10,8 +10,11 @@ on:
 
 jobs:
   test:
-    name: Test & Build
+    name: Test & Build (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -52,7 +55,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
