@@ -1,7 +1,6 @@
 {
   "name": "@dev-atlas/mcp-knowledge-graph",
   "version": "0.1.0",
-  "private": true,
   "description": "MCP server for managing knowledge graph in SQLite",
   "type": "module",
   "main": "dist/index.js",
@@ -24,6 +23,13 @@
     "tsx": "^4.6.0",
     "typescript": "^5.2.2",
     "vitest": "^1.0.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^11.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.2.6",
+    "@semantic-release/npm": "^11.0.2",
+    "@semantic-release/release-notes-generator": "^12.1.0",
+    "semantic-release": "^22.0.12"
   }
 }

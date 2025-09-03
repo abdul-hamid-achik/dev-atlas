@@ -4,12 +4,12 @@ import { DocsThemeConfig } from 'nextra-theme-docs'
 const config: DocsThemeConfig = {
   logo: <span>🗺️ Dev Atlas</span>,
   project: {
-    link: 'https://github.com/username/dev-atlas',
+    link: 'https://github.com/abdul-hamid-achik/dev-atlas',
   },
   chat: {
     link: 'https://discord.gg',
   },
-  docsRepositoryBase: 'https://github.com/username/dev-atlas/tree/main/apps/website',
+  docsRepositoryBase: 'https://github.com/abdul-hamid-achik/dev-atlas/tree/main/apps/website',
   footer: {
     text: 'Dev Atlas © 2024',
   },
