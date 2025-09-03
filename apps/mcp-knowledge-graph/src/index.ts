@@ -1549,13 +1549,13 @@ class KnowledgeGraphMCPServer {
 
                 // Ensure both nodes have embeddings
                 try {
-                  await this.db.generateNodeEmbedding(node1.id, { 
+                  await this.db.generateNodeEmbedding(node1.id, {
                     provider: (validatedArgs as any).provider,
-                    model: validatedArgs.model 
+                    model: validatedArgs.model
                   });
-                  await this.db.generateNodeEmbedding(node2.id, { 
+                  await this.db.generateNodeEmbedding(node2.id, {
                     provider: (validatedArgs as any).provider,
-                    model: validatedArgs.model 
+                    model: validatedArgs.model
                   });
                 } catch (error) {
                   // Skip if embedding generation fails
@@ -1599,13 +1599,13 @@ class KnowledgeGraphMCPServer {
 
           case 'get_embedding_providers': {
             const providerInfo = await this.db.getEmbeddingProviderInfo();
-            
+
             return {
               content: [
                 {
                   type: 'text',
                   text: `Available Embedding Providers:\n\n${providerInfo
-                    .map(p => 
+                    .map(p =>
                       `${p.name.toUpperCase()} (${p.available ? '✅ Available' : '❌ Unavailable'})\n` +
                       `  Default Model: ${p.defaultModel}\n` +
                       `  Supported Models: ${p.supportedModels.join(', ')}\n`

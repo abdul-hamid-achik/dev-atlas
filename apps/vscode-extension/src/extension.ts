@@ -121,7 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const filterTreeViewCmd = vscode.commands.registerCommand('dev-atlas.filterTreeView', async () => {
     log('Filter tree view command triggered');
-    
+
     const filterType = await vscode.window.showQuickPick([
       { label: '🔍 Search Filter', description: 'Filter by search term', value: 'search' },
       { label: '🏷️ Type Filter', description: 'Filter by node type', value: 'type' }

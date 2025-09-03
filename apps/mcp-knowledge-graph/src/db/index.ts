@@ -15,10 +15,10 @@ import type {
   QueryNodes,
 } from '../types/schema.js';
 import { edges, nodes, vectorSearchCache } from './schema.js';
-import { 
-  EmbeddingProviderFactory, 
+import {
+  EmbeddingProviderFactory,
   logEmbeddingSetup,
-  type EmbeddingResult 
+  type EmbeddingResult
 } from '../providers/embedding-providers.js';
 
 // Zod schemas for runtime validation and type safety
@@ -455,9 +455,9 @@ export class KnowledgeGraphDB {
 
       // Generate embedding for the new node
       try {
-        await this.generateNodeEmbedding(node.id, { 
-          provider: embeddingProvider, 
-          model: embeddingModel 
+        await this.generateNodeEmbedding(node.id, {
+          provider: embeddingProvider,
+          model: embeddingModel
         });
       } catch (error) {
         console.error(
@@ -483,10 +483,10 @@ export class KnowledgeGraphDB {
 
         // Regenerate embedding after update
         try {
-          await this.generateNodeEmbedding(bestMatch.id, { 
-          provider: embeddingProvider, 
-          model: embeddingModel 
-        });
+          await this.generateNodeEmbedding(bestMatch.id, {
+            provider: embeddingProvider,
+            model: embeddingModel
+          });
         } catch (error) {
           console.error(
             `[VectorSearch] Failed to regenerate embedding for updated node ${bestMatch.id}:`,
@@ -502,10 +502,10 @@ export class KnowledgeGraphDB {
 
         // Regenerate embedding after merge
         try {
-          await this.generateNodeEmbedding(bestMatch.id, { 
-          provider: embeddingProvider, 
-          model: embeddingModel 
-        });
+          await this.generateNodeEmbedding(bestMatch.id, {
+            provider: embeddingProvider,
+            model: embeddingModel
+          });
         } catch (error) {
           console.error(
             `[VectorSearch] Failed to regenerate embedding for merged node ${bestMatch.id}:`,
@@ -647,11 +647,11 @@ export class KnowledgeGraphDB {
     return result;
   }
 
-    // ========== VECTOR EMBEDDING & SEARCH METHODS ==========
+  // ========== VECTOR EMBEDDING & SEARCH METHODS ==========
 
   // Generate text embedding using the configured provider (Ollama local by default)
   private async generateEmbedding(
-    text: string, 
+    text: string,
     options: { provider?: string; model?: string } = {}
   ): Promise<EmbeddingResult> {
     return await this.embeddingFactory.generateEmbedding(text, options);
@@ -679,7 +679,7 @@ export class KnowledgeGraphDB {
 
   // Generate and store embedding for a node using the configured provider
   async generateNodeEmbedding(
-    nodeId: string, 
+    nodeId: string,
     options: { provider?: string; model?: string } = {}
   ): Promise<EmbeddingResult> {
     const node = await this.getNode(nodeId);
@@ -703,7 +703,7 @@ export class KnowledgeGraphDB {
 
   // Generate and store embedding for an edge using the configured provider
   async generateEdgeEmbedding(
-    edgeId: string, 
+    edgeId: string,
     options: { provider?: string; model?: string } = {}
   ): Promise<EmbeddingResult> {
     const edge = await this.getEdge(edgeId);
@@ -745,12 +745,12 @@ export class KnowledgeGraphDB {
       nodeTypes?: string[];
     } = {}
   ): Promise<Array<{ node: Node; similarity: number }>> {
-    const { 
-      limit = 20, 
-      threshold = 0.1, 
-      provider, 
-      model, 
-      nodeTypes = [] 
+    const {
+      limit = 20,
+      threshold = 0.1,
+      provider,
+      model,
+      nodeTypes = []
     } = options;
 
     // Generate query embedding using the configured provider
