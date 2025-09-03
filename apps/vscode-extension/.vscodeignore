@@ -1,28 +1,68 @@
-.git/
+# VSCode extension ignore file
+
+# Source files
+src/**
+tsconfig.json
+*.ts
+!*.d.ts
+
+# Dependencies
+node_modules/**
+.npm/**
+.pnpm/**
+.yarn/**
+
+# Build artifacts
+*.js.map
+*.tsbuildinfo
+
+# Git files
+.git/**
 .gitignore
 .gitattributes
-**/*.ts
-**/tsconfig.json
-**/.eslintrc.json
-**/*.map
-.nyc_output
-coverage
-**/*.nyc
-node_modules/
-.vscode-test/
-.vscode/
-src/
-test/
-tests/
-.github/
-.DS_Store
-**/*.test.*
-**/*.spec.*
+**/.git/**
+**/COMMIT_EDITMSG
+
+# Parent directory files
+../**
+../../**
+../../../**
+
+# Documentation
 *.md
 !README.md
-.env*
-vitest.config.*
-.turbo/
+VISUALIZER.md
+
+# Tests
+test/**
+.vscode-test/**
+*.test.*
+coverage/**
+
+# Logs
 *.log
-dist/**/*.map
-../../*
+npm-debug.log*
+
+# IDE files
+.vscode/**
+.idea/**
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Lock files
+package-lock.json
+yarn.lock
+
+# Development files
+.eslintrc*
+.prettierrc*
+.editorconfig
+.env*
