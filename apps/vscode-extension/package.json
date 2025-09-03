@@ -1,0 +1,74 @@
+{
+  "name": "dev-atlas-extension",
+  "displayName": "Dev Atlas",
+  "description": "Dev Atlas - Knowledge Graph Extension for VS Code/Cursor",
+  "version": "0.1.0",
+  "publisher": "dev-atlas",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:dev-atlas.openKnowledgeGraph",
+    "onCommand:dev-atlas.createNode",
+    "onCommand:dev-atlas.createEdge"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dev-atlas.openKnowledgeGraph",
+        "title": "Open Knowledge Graph",
+        "category": "Dev Atlas"
+      },
+      {
+        "command": "dev-atlas.createNode",
+        "title": "Create Node",
+        "category": "Dev Atlas"
+      },
+      {
+        "command": "dev-atlas.createEdge",
+        "title": "Create Edge",
+        "category": "Dev Atlas"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "dev-atlas-knowledge-graph",
+          "name": "Knowledge Graph",
+          "when": "true"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dev-atlas",
+          "title": "Dev Atlas",
+          "icon": "$(graph)"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "biome check src/",
+    "test": "vitest",
+    "clean": "rm -rf dist",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@vscode/test-electron": "^2.3.0",
+    "typescript": "^5.2.2",
+    "vitest": "^1.0.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  }
+}

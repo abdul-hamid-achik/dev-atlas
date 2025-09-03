@@ -1,0 +1,89 @@
+# Getting Started
+
+Welcome to Dev Atlas! This guide will help you set up and start using the knowledge graph system for developers.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** >= 18.0.0
+- **npm** >= 10.0.0  
+- **VS Code** or **Cursor** (for the extension)
+
+## Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/username/dev-atlas.git
+cd dev-atlas
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Start the MCP Server
+
+```bash
+# Start the MCP Knowledge Graph server
+npm run dev --workspace=@dev-atlas/mcp-knowledge-graph
+```
+
+The server will start on the default port and create a SQLite database for storing your knowledge graph.
+
+### 4. Install the VS Code Extension
+
+```bash
+# Build the extension
+npm run build --workspace=dev-atlas-extension
+
+# Package the extension
+cd apps/vscode-extension
+npm run package
+```
+
+Then install the generated `.vsix` file in VS Code/Cursor:
+1. Open VS Code/Cursor
+2. Go to Extensions (Ctrl+Shift+X)
+3. Click the "..." menu and select "Install from VSIX..."
+4. Select the generated `.vsix` file
+
+## First Steps
+
+### Creating Your First Node
+
+1. Open the Command Palette (Ctrl+Shift+P)
+2. Type "Dev Atlas: Create Node"
+3. Enter a name for your node (e.g., "Authentication System")
+4. Select a type (e.g., "Component", "Concept", "Feature")
+
+### Creating Relationships
+
+1. Open the Command Palette (Ctrl+Shift+P)  
+2. Type "Dev Atlas: Create Edge"
+3. Select the source node
+4. Select the target node
+5. Define the relationship type (e.g., "depends_on", "implements", "uses")
+
+### Viewing the Knowledge Graph
+
+1. Open the Dev Atlas sidebar
+2. Click on "Knowledge Graph" to explore your nodes and relationships
+3. Use the visual interface to navigate your knowledge graph
+
+## Next Steps
+
+- Read about the [Architecture](/docs/architecture) to understand how Dev Atlas works
+- Learn about [Configuration](/docs/configuration) options
+- Explore [Examples](/docs/examples) of knowledge graphs
+- Check out the [MCP Server](/mcp) documentation
+- Learn about the [VS Code Extension](/extension) features
+
+## Need Help?
+
+- Check the [Troubleshooting](/docs/troubleshooting) guide
+- Visit our [GitHub repository](https://github.com/username/dev-atlas)
+- Join our community Discord

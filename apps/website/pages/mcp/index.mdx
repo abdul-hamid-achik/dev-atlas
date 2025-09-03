@@ -1,0 +1,170 @@
+# MCP Knowledge Graph Server
+
+The MCP (Model Context Protocol) Knowledge Graph Server is the core component of Dev Atlas. It provides a robust backend for storing, querying, and managing knowledge graphs using SQLite.
+
+## Features
+
+### 🗄️ **SQLite Storage**
+- Lightweight and fast SQLite database
+- No external dependencies required
+- Portable database files
+
+### 🔍 **Advanced Querying**
+- Full-text search capabilities
+- Graph traversal algorithms
+- Relationship-based queries
+- Complex filtering options
+
+### ⚡ **High Performance**
+- Built with TypeScript for type safety
+- Drizzle ORM for efficient database operations
+- Optimized query patterns
+- Connection pooling
+
+### 🛡️ **Data Validation**
+- Zod schemas for runtime validation
+- Type-safe operations
+- Input sanitization
+- Error handling
+
+## Architecture
+
+The MCP server follows a clean architecture pattern:
+
+```
+src/
+├── db/
+│   ├── index.ts          # Database connection and setup
+│   └── schema.ts         # Drizzle schema definitions
+├── types/
+│   └── schema.ts         # Zod validation schemas  
+├── index.ts              # MCP server implementation
+└── test/
+    ├── setup.ts          # Test configuration
+    └── db.test.ts        # Database tests
+```
+
+## Core Operations
+
+### Entities (Nodes)
+- **Create**: Add new nodes to the knowledge graph
+- **Read**: Retrieve nodes by ID, name, or search criteria
+- **Update**: Modify node properties and observations
+- **Delete**: Remove nodes and their relationships
+
+### Relations (Edges)
+- **Create**: Establish connections between nodes
+- **Read**: Query relationships and traverse the graph
+- **Update**: Modify relationship properties
+- **Delete**: Remove specific relationships
+
+### Observations
+- **Add**: Attach observations to existing nodes
+- **Search**: Find nodes by observation content
+- **Update**: Modify observation data
+- **Delete**: Remove specific observations
+
+## Getting Started
+
+### Installation
+
+```bash
+cd apps/mcp-knowledge-graph
+npm install
+```
+
+### Development
+
+```bash
+# Start in development mode with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+```
+
+### Configuration
+
+The server uses environment variables for configuration:
+
+```env
+DB_PATH=./knowledge-graph.db    # SQLite database path
+PORT=3000                       # Server port (optional)
+```
+
+## API Examples
+
+### Creating an Entity
+
+```typescript
+// Create a new node
+const entity = {
+  name: "Authentication Service",
+  entityType: "Service",
+  observations: [
+    "Handles user login and registration",
+    "Uses JWT tokens for session management"
+  ]
+}
+```
+
+### Creating Relations
+
+```typescript
+// Create a relationship between two entities
+const relation = {
+  from: "Authentication Service",
+  to: "User Database", 
+  relationType: "depends_on"
+}
+```
+
+### Searching
+
+```typescript
+// Search for entities containing specific terms
+const results = await searchNodes("authentication login");
+```
+
+## Database Schema
+
+The knowledge graph uses a simple but powerful schema:
+
+- **Entities**: Core nodes with names, types, and metadata
+- **Relations**: Directed edges connecting entities
+- **Observations**: Textual data attached to entities
+- **Entity_Observations**: Junction table for entity-observation relationships
+
+See the [Database Schema](/mcp/database) page for detailed information.
+
+## Performance
+
+The MCP server is designed for high performance:
+
+- **Fast Queries**: Optimized indexes on frequently queried columns  
+- **Efficient Joins**: Minimized database round trips
+- **Connection Reuse**: Persistent database connections
+- **Memory Management**: Streaming for large result sets
+
+## Testing
+
+Comprehensive test suite using Vitest:
+
+```bash
+npm test                    # Run all tests
+npm run test:watch         # Watch mode for development
+```
+
+Test categories:
+- Unit tests for individual functions
+- Integration tests for database operations  
+- Performance tests for query optimization
+
+## Next Steps
+
+- Read the [API Reference](/mcp/api) for detailed method documentation
+- Check out [Examples](/mcp/examples) of common usage patterns
+- Learn about the [Database Schema](/mcp/database) design

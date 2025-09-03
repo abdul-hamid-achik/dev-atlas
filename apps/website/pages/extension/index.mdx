@@ -1,0 +1,264 @@
+# VS Code / Cursor Extension
+
+The Dev Atlas extension provides a seamless integration with VS Code and Cursor editors, allowing developers to create and manage knowledge graphs directly from their IDE.
+
+## Features
+
+### 🎨 **Visual Interface**
+- Clean and intuitive sidebar panel
+- Interactive knowledge graph viewer  
+- Contextual menus and commands
+- Responsive design
+
+### ⌨️ **Keyboard Shortcuts**
+- Quick access to common operations
+- Command palette integration
+- Customizable keybindings
+- Efficient workflows
+
+### 🔗 **MCP Integration**
+- Real-time connection to MCP server
+- Automatic synchronization
+- Error handling and retry logic
+- Offline mode support
+
+### 📁 **Project Context**
+- Workspace-aware operations
+- File and folder associations
+- Git integration
+- Multi-root workspace support
+
+## Installation
+
+### From VSIX (Recommended)
+
+1. Build the extension:
+```bash
+cd apps/vscode-extension
+npm run build
+npm run package
+```
+
+2. Install in VS Code/Cursor:
+   - Open Extensions view (Ctrl+Shift+X)
+   - Click "..." menu → "Install from VSIX..."
+   - Select the generated `.vsix` file
+
+### From Source
+
+1. Clone and build:
+```bash
+git clone https://github.com/username/dev-atlas.git
+cd dev-atlas/apps/vscode-extension
+npm install
+npm run build
+```
+
+2. Run in development:
+   - Press F5 to open Extension Development Host
+   - Test your changes in the new VS Code window
+
+## Commands
+
+The extension provides several commands accessible through the Command Palette (Ctrl+Shift+P):
+
+### `Dev Atlas: Open Knowledge Graph`
+Opens the main knowledge graph view in the sidebar.
+
+### `Dev Atlas: Create Node`
+Creates a new node in the knowledge graph:
+1. Enter node name
+2. Select node type (Component, Service, Concept, etc.)
+3. Add optional description
+
+### `Dev Atlas: Create Edge`
+Creates a relationship between two nodes:
+1. Select source node from dropdown
+2. Select target node from dropdown  
+3. Define relationship type (depends_on, implements, uses, etc.)
+
+### `Dev Atlas: Search Nodes`
+Search for nodes in the knowledge graph:
+- Full-text search across node names and observations
+- Filter by node type
+- Sort by relevance or creation date
+
+### `Dev Atlas: Export Graph`
+Export the knowledge graph in various formats:
+- JSON format for backup/restore
+- GraphML for external visualization tools
+- CSV for spreadsheet analysis
+
+## Views & UI
+
+### Sidebar Panel
+
+The main interface appears in the Explorer sidebar:
+
+```
+🗺️ DEV ATLAS
+├── 📊 Knowledge Graph
+│   ├── 🔧 Services (5)
+│   │   ├── Authentication Service
+│   │   ├── User Management
+│   │   └── Payment Gateway
+│   ├── 📦 Components (12)
+│   │   ├── Header Component
+│   │   ├── Navigation Menu
+│   │   └── User Profile
+│   └── 💡 Concepts (8)
+│       ├── Authentication Flow
+│       ├── Data Persistence
+│       └── API Design
+├── 🔍 Search
+└── ⚙️ Settings
+```
+
+### Context Menus
+
+Right-click context menus provide quick actions:
+- **On Node**: Edit, Delete, Add Relation, View Details
+- **On Edge**: Edit Relation, Delete Relation
+- **On Empty Space**: Create Node, Refresh View
+
+### Quick Actions
+
+Toolbar buttons for common operations:
+- ➕ Create Node
+- 🔗 Create Relation  
+- 🔄 Refresh Graph
+- 📊 View Statistics
+- ⚙️ Settings
+
+## Configuration
+
+### Extension Settings
+
+Configure the extension through VS Code settings:
+
+```json
+{
+  "dev-atlas.server.host": "localhost",
+  "dev-atlas.server.port": 3000,
+  "dev-atlas.ui.theme": "auto",
+  "dev-atlas.ui.compactMode": false,
+  "dev-atlas.search.fuzzyMatching": true,
+  "dev-atlas.graph.maxNodes": 1000
+}
+```
+
+### Keybindings
+
+Default keyboard shortcuts:
+
+- `Ctrl+Shift+K G`: Open Knowledge Graph
+- `Ctrl+Shift+K N`: Create Node  
+- `Ctrl+Shift+K E`: Create Edge
+- `Ctrl+Shift+K S`: Search Nodes
+
+Customize in VS Code's Keyboard Shortcuts (Ctrl+K Ctrl+S).
+
+## Workspace Integration
+
+### File Associations
+
+Link nodes to files and folders in your workspace:
+- Drag files onto nodes to create associations
+- Auto-detect relevant files based on node type
+- Navigate from graph to code and vice versa
+
+### Git Integration
+
+Track knowledge graph changes with your codebase:
+- Commit knowledge graph changes alongside code
+- Branch-aware knowledge graphs
+- Merge conflict resolution for graph data
+
+### Multi-root Workspaces
+
+Support for complex workspace setups:
+- Separate knowledge graphs per workspace root
+- Cross-workspace node relationships  
+- Unified search across all roots
+
+## Advanced Features
+
+### Custom Node Types
+
+Define custom node types for your domain:
+
+```json
+{
+  "dev-atlas.nodeTypes.custom": [
+    {
+      "name": "Database Table",
+      "icon": "database",
+      "color": "#4CAF50",
+      "fields": ["schema", "columns", "indexes"]
+    },
+    {
+      "name": "API Endpoint", 
+      "icon": "globe",
+      "color": "#2196F3",
+      "fields": ["method", "path", "parameters"]
+    }
+  ]
+}
+```
+
+### Plugins & Extensions
+
+Extend functionality with plugins:
+- Custom visualization renderers
+- External tool integrations
+- Data import/export formats
+- Automated graph generation
+
+## Troubleshooting
+
+### Common Issues
+
+**Extension not loading:**
+- Check VS Code version compatibility (>= 1.74.0)
+- Verify extension is enabled
+- Check Output panel for error messages
+
+**Cannot connect to MCP server:**
+- Ensure MCP server is running
+- Verify host/port configuration
+- Check firewall settings
+
+**Graph not updating:**
+- Try refreshing the view (Ctrl+R)
+- Check MCP server logs
+- Verify database permissions
+
+### Debug Mode
+
+Enable debug logging:
+
+```json
+{
+  "dev-atlas.debug.enabled": true,
+  "dev-atlas.debug.logLevel": "verbose"
+}
+```
+
+View logs in Output panel → "Dev Atlas" channel.
+
+## Contributing
+
+Help improve the extension:
+
+1. Fork the repository
+2. Make changes in `apps/vscode-extension/`
+3. Test with Extension Development Host
+4. Submit pull request
+
+See the [Contributing Guide] for detailed instructions.
+
+## Next Steps
+
+- Learn about [Commands](/extension/commands) in detail
+- Explore [Views & UI](/extension/views) customization
+- Check [Configuration](/extension/configuration) options
