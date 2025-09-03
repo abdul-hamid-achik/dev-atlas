@@ -39,10 +39,19 @@ export class KnowledgeGraphDB {
   private sqlite: Database.Database;
 
   constructor(dbPath?: string) {
-    const defaultPath = dbPath || path.join(findProjectRoot(), 'knowledge-graph.db');
+    const projectRoot = findProjectRoot();
+    const defaultPath = dbPath || path.join(projectRoot, 'knowledge-graph.db');
+    
+    // Log database initialization info
+    console.error(`[KnowledgeGraph] Current working directory: ${process.cwd()}`);
+    console.error(`[KnowledgeGraph] Project root detected: ${projectRoot}`);
+    console.error(`[KnowledgeGraph] Database path: ${defaultPath}`);
+    
     this.sqlite = new Database(defaultPath);
     this.db = drizzle(this.sqlite);
     this.initializeTables();
+    
+    console.error(`[KnowledgeGraph] Database initialized successfully`);
   }
 
   private initializeTables() {

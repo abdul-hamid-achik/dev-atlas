@@ -19,13 +19,17 @@ class KnowledgeGraphMCPServer {
   private db: KnowledgeGraphDB;
 
   constructor() {
+    console.error('[MCP Server] Starting Knowledge Graph MCP Server...');
+    
     this.server = new Server({
       name: 'knowledge-graph-mcp',
-      version: '0.1.0',
+      version: '0.2.0',
     });
 
     this.db = new KnowledgeGraphDB();
     this.setupToolHandlers();
+    
+    console.error('[MCP Server] Knowledge Graph MCP Server initialized');
   }
 
   private setupToolHandlers() {
@@ -269,7 +273,8 @@ class KnowledgeGraphMCPServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Knowledge Graph MCP Server running on stdio');
+    console.error('[MCP Server] Knowledge Graph MCP Server running on stdio');
+    console.error('[MCP Server] Ready to accept requests');
   }
 }
 
