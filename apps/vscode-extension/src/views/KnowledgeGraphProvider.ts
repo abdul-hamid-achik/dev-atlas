@@ -64,6 +64,8 @@ export class KnowledgeGraphProvider
   private nodes: KnowledgeGraphNode[] = [];
   private edges: KnowledgeGraphEdge[] = [];
   private db: KnowledgeGraphDB | null = null;
+  private searchFilter: string = '';
+  private typeFilter: string = '';
 
   constructor() {
     this.initializeDatabase();
@@ -249,8 +251,9 @@ export class KnowledgeGraphProvider
     element?: KnowledgeGraphNode | KnowledgeGraphEdge
   ): Thenable<(KnowledgeGraphNode | KnowledgeGraphEdge)[]> {
     if (!element) {
-      // Return root level items (nodes)
-      return Promise.resolve(this.nodes);
+      // Return filtered root level items (nodes)
+      const filteredNodes = this._applyFilters(this.nodes);
+      return Promise.resolve(filteredNodes);
     }
 
     if (element instanceof KnowledgeGraphNode) {
@@ -262,6 +265,70 @@ export class KnowledgeGraphProvider
     }
 
     return Promise.resolve([]);
+  }
+
+  /**
+   * Applies current search and type filters to the nodes list.
+   */
+  private _applyFilters(nodes: KnowledgeGraphNode[]): KnowledgeGraphNode[] {
+    let filtered = nodes;
+
+    // Apply search filter
+    if (this.searchFilter) {
+      const searchTerm = this.searchFilter.toLowerCase();
+      filtered = filtered.filter(node =>
+        node.label.toLowerCase().includes(searchTerm) ||
+        node.type.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Apply type filter
+    if (this.typeFilter) {
+      filtered = filtered.filter(node =>
+        node.type.toLowerCase() === this.typeFilter.toLowerCase()
+      );
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Sets the search filter and refreshes the tree view.
+   */
+  setSearchFilter(filter: string): void {
+    this.searchFilter = filter;
+    this._onDidChangeTreeData.fire(undefined);
+    log(`Search filter applied: "${filter}"`);
+  }
+
+  /**
+   * Sets the type filter and refreshes the tree view.
+   */
+  setTypeFilter(filter: string): void {
+    this.typeFilter = filter;
+    this._onDidChangeTreeData.fire(undefined);
+    log(`Type filter applied: "${filter}"`);
+  }
+
+  /**
+   * Clears all filters and refreshes the tree view.
+   */
+  clearFilters(): void {
+    this.searchFilter = '';
+    this.typeFilter = '';
+    this._onDidChangeTreeData.fire(undefined);
+    log('All filters cleared');
+  }
+
+  /**
+   * Gets current filter status.
+   */
+  getFilterStatus(): { searchFilter: string; typeFilter: string; hasFilters: boolean } {
+    return {
+      searchFilter: this.searchFilter,
+      typeFilter: this.typeFilter,
+      hasFilters: !!(this.searchFilter || this.typeFilter)
+    };
   }
 
   // Method to add a new node

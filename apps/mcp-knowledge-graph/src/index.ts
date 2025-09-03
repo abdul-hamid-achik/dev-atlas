@@ -750,13 +750,54 @@ class KnowledgeGraphMCPServer {
                   description: 'Node IDs to analyze for similarity',
                   minItems: 2,
                 },
+                provider: {
+                  type: 'string',
+                  description: 'Embedding provider (ollama, openai, simple)',
+                  default: 'ollama',
+                },
                 model: {
                   type: 'string',
                   description: 'Embedding model to use',
-                  default: 'simple',
                 },
               },
               required: ['nodeIds'],
+            },
+          },
+          {
+            name: 'get_embedding_providers',
+            description: 'Get information about available embedding providers and their models',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
+          {
+            name: 'configure_embedding_provider',
+            description: 'Configure the default embedding provider and model for the session',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                provider: {
+                  type: 'string',
+                  enum: ['ollama', 'openai', 'simple'],
+                  description: 'Embedding provider to use',
+                },
+                model: {
+                  type: 'string',
+                  description: 'Model to use with the provider',
+                },
+                config: {
+                  type: 'object',
+                  description: 'Provider-specific configuration (e.g., API keys, URLs)',
+                  properties: {
+                    ollamaUrl: { type: 'string', description: 'Ollama server URL' },
+                    openaiApiKey: { type: 'string', description: 'OpenAI API key' },
+                    timeout: { type: 'number', description: 'Request timeout in ms' },
+                    maxRetries: { type: 'number', description: 'Maximum retry attempts' },
+                  },
+                },
+              },
+              required: ['provider'],
             },
           },
         ],
@@ -1418,7 +1459,7 @@ class KnowledgeGraphMCPServer {
 
               for (const nodeId of validatedArgs.nodeIds) {
                 try {
-                  await this.db.generateNodeEmbedding(nodeId, validatedArgs.model);
+                  await this.db.generateNodeEmbedding(nodeId, { model: validatedArgs.model });
                   processed++;
                 } catch (error) {
                   errors++;
@@ -1508,8 +1549,14 @@ class KnowledgeGraphMCPServer {
 
                 // Ensure both nodes have embeddings
                 try {
-                  await this.db.generateNodeEmbedding(node1.id, validatedArgs.model);
-                  await this.db.generateNodeEmbedding(node2.id, validatedArgs.model);
+                  await this.db.generateNodeEmbedding(node1.id, { 
+                    provider: (validatedArgs as any).provider,
+                    model: validatedArgs.model 
+                  });
+                  await this.db.generateNodeEmbedding(node2.id, { 
+                    provider: (validatedArgs as any).provider,
+                    model: validatedArgs.model 
+                  });
                 } catch (error) {
                   // Skip if embedding generation fails
                   continue;
@@ -1533,7 +1580,7 @@ class KnowledgeGraphMCPServer {
                       similarity: similarity,
                       percentage: `${(similarity * 100).toFixed(1)}%`,
                     });
-                  } catch (error) {}
+                  } catch (error) { }
                 }
               }
             }
@@ -1545,6 +1592,61 @@ class KnowledgeGraphMCPServer {
                   text: `Vector similarity analysis:\nModel: ${validatedArgs.model}\nNodes analyzed: ${nodes.length}\nPairwise similarities:\n\n${similarities
                     .map((s) => `${s.node1.label} ↔ ${s.node2.label}: ${s.percentage}`)
                     .join('\n')}\n\nDetailed Results:\n${JSON.stringify(similarities, null, 2)}`,
+                },
+              ],
+            };
+          }
+
+          case 'get_embedding_providers': {
+            const providerInfo = await this.db.getEmbeddingProviderInfo();
+            
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Available Embedding Providers:\n\n${providerInfo
+                    .map(p => 
+                      `${p.name.toUpperCase()} (${p.available ? '✅ Available' : '❌ Unavailable'})\n` +
+                      `  Default Model: ${p.defaultModel}\n` +
+                      `  Supported Models: ${p.supportedModels.join(', ')}\n`
+                    )
+                    .join('\n')}\n\nConfiguration:\n` +
+                    `Set EMBEDDING_PROVIDER environment variable to choose provider\n` +
+                    `Ollama (Local): Run 'ollama serve' then 'ollama pull nomic-embed-text'\n` +
+                    `OpenAI (Cloud): Set OPENAI_API_KEY environment variable\n` +
+                    `Simple (Fallback): Always available, JavaScript-only`,
+                },
+              ],
+            };
+          }
+
+          case 'configure_embedding_provider': {
+            const { provider, model, config } = args as {
+              provider: 'ollama' | 'openai' | 'simple';
+              model?: string;
+              config?: {
+                ollamaUrl?: string;
+                openaiApiKey?: string;
+                timeout?: number;
+                maxRetries?: number;
+              };
+            };
+
+            // This would reset the provider factory with new configuration
+            // For now, we'll just show what would be configured
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Configuration Preview:\nProvider: ${provider}\nModel: ${model || 'default'}\n\n` +
+                    `To apply this configuration permanently, set environment variables:\n` +
+                    `EMBEDDING_PROVIDER=${provider}\n` +
+                    `${model ? `EMBEDDING_MODEL=${model}\n` : ''}` +
+                    `${config?.ollamaUrl ? `OLLAMA_URL=${config.ollamaUrl}\n` : ''}` +
+                    `${config?.openaiApiKey ? `OPENAI_API_KEY=${config.openaiApiKey}\n` : ''}` +
+                    `${config?.timeout ? `EMBEDDING_TIMEOUT=${config.timeout}\n` : ''}` +
+                    `${config?.maxRetries ? `EMBEDDING_RETRIES=${config.maxRetries}\n` : ''}` +
+                    `\nRestart the MCP server to apply configuration changes.`,
                 },
               ],
             };

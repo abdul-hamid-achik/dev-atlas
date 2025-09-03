@@ -25,7 +25,12 @@
     "onCommand:dev-atlas.openKnowledgeGraph",
     "onCommand:dev-atlas.createNode",
     "onCommand:dev-atlas.createEdge",
-    "onCommand:dev-atlas.configureFilePrefix"
+    "onCommand:dev-atlas.configureFilePrefix",
+    "onCommand:dev-atlas.searchKnowledgeGraph",
+    "onCommand:dev-atlas.advancedSearch",
+    "onCommand:dev-atlas.vectorSearch",
+    "onCommand:dev-atlas.filterTreeView",
+    "onCommand:dev-atlas.clearTreeFilters"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -63,8 +68,26 @@
       {
         "command": "dev-atlas.advancedSearch",
         "title": "Advanced Search",
-        "category": "Dev Atlas", 
+        "category": "Dev Atlas",
         "icon": "$(search-fuzzy)"
+      },
+      {
+        "command": "dev-atlas.vectorSearch",
+        "title": "Vector Search (AI/Semantic)",
+        "category": "Dev Atlas",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "dev-atlas.filterTreeView",
+        "title": "Filter Tree View",
+        "category": "Dev Atlas",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "dev-atlas.clearTreeFilters",
+        "title": "Clear Tree Filters",
+        "category": "Dev Atlas",
+        "icon": "$(clear-all)"
       }
     ],
     "views": {
@@ -113,6 +136,31 @@
           "command": "dev-atlas.configureFilePrefix",
           "when": "view == dev-atlas-knowledge-graph",
           "group": "navigation@3"
+        },
+        {
+          "command": "dev-atlas.searchKnowledgeGraph",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@4"
+        },
+        {
+          "command": "dev-atlas.advancedSearch",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@5"
+        },
+        {
+          "command": "dev-atlas.vectorSearch",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@6"
+        },
+        {
+          "command": "dev-atlas.filterTreeView",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "inline@1"
+        },
+        {
+          "command": "dev-atlas.clearTreeFilters",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "inline@2"
         }
       ],
       "commandPalette": [
@@ -131,9 +179,43 @@
         {
           "command": "dev-atlas.configureFilePrefix",
           "title": "Dev Atlas: Configure File Path Prefix"
+        },
+        {
+          "command": "dev-atlas.searchKnowledgeGraph",
+          "title": "Dev Atlas: Search Knowledge Graph"
+        },
+        {
+          "command": "dev-atlas.advancedSearch",
+          "title": "Dev Atlas: Advanced Search"
+        },
+        {
+          "command": "dev-atlas.vectorSearch",
+          "title": "Dev Atlas: Vector Search (AI/Semantic)"
+        },
+        {
+          "command": "dev-atlas.filterTreeView",
+          "title": "Dev Atlas: Filter Tree View"
+        },
+        {
+          "command": "dev-atlas.clearTreeFilters",
+          "title": "Dev Atlas: Clear Tree Filters"
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "dev-atlas.vectorSearch",
+        "key": "ctrl+shift+f ctrl+shift+v",
+        "mac": "cmd+shift+f cmd+shift+v",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "dev-atlas.searchKnowledgeGraph", 
+        "key": "ctrl+shift+f ctrl+shift+s",
+        "mac": "cmd+shift+f cmd+shift+s",
+        "when": "editorTextFocus"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Dev Atlas",

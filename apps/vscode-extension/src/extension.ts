@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { createEdgeCommand } from './commands/createEdge';
 import { createNodeCommand } from './commands/createNode';
+import { searchKnowledgeGraphCommand, advancedSearchCommand, vectorSearchCommand } from './commands/searchKnowledgeGraph';
 import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
 
@@ -103,12 +104,79 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  const searchKnowledgeGraphCmd = vscode.commands.registerCommand('dev-atlas.searchKnowledgeGraph', () => {
+    log('Search knowledge graph command triggered');
+    searchKnowledgeGraphCommand();
+  });
+
+  const advancedSearchCmd = vscode.commands.registerCommand('dev-atlas.advancedSearch', () => {
+    log('Advanced search command triggered');
+    advancedSearchCommand();
+  });
+
+  const vectorSearchCmd = vscode.commands.registerCommand('dev-atlas.vectorSearch', () => {
+    log('Vector search command triggered');
+    vectorSearchCommand();
+  });
+
+  const filterTreeViewCmd = vscode.commands.registerCommand('dev-atlas.filterTreeView', async () => {
+    log('Filter tree view command triggered');
+    
+    const filterType = await vscode.window.showQuickPick([
+      { label: '🔍 Search Filter', description: 'Filter by search term', value: 'search' },
+      { label: '🏷️ Type Filter', description: 'Filter by node type', value: 'type' }
+    ], {
+      placeHolder: 'Choose filter type'
+    });
+
+    if (!filterType) {
+      return;
+    }
+
+    if (filterType.value === 'search') {
+      const searchTerm = await vscode.window.showInputBox({
+        prompt: 'Enter search term to filter tree view',
+        placeHolder: 'Filter nodes by label or type'
+      });
+
+      if (searchTerm !== undefined) {
+        provider.setSearchFilter(searchTerm);
+        vscode.window.showInformationMessage(
+          searchTerm ? `Tree filtered by: "${searchTerm}"` : 'Search filter cleared'
+        );
+      }
+    } else {
+      const typeTerm = await vscode.window.showInputBox({
+        prompt: 'Enter node type to filter by',
+        placeHolder: 'e.g., Framework, Language, Tool'
+      });
+
+      if (typeTerm !== undefined) {
+        provider.setTypeFilter(typeTerm);
+        vscode.window.showInformationMessage(
+          typeTerm ? `Tree filtered by type: "${typeTerm}"` : 'Type filter cleared'
+        );
+      }
+    }
+  });
+
+  const clearTreeFiltersCmd = vscode.commands.registerCommand('dev-atlas.clearTreeFilters', () => {
+    log('Clear tree filters command triggered');
+    provider.clearFilters();
+    vscode.window.showInformationMessage('Tree view filters cleared');
+  });
+
   // Add commands to context
   context.subscriptions.push(
     openKnowledgeGraphCommand,
     createNodeCmd,
     createEdgeCmd,
     configureFilePrefixCmd,
+    searchKnowledgeGraphCmd,
+    advancedSearchCmd,
+    vectorSearchCmd,
+    filterTreeViewCmd,
+    clearTreeFiltersCmd,
     outputChannel
   );
   log('Commands registered successfully');

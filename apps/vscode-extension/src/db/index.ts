@@ -349,4 +349,205 @@ export class KnowledgeGraphDB {
       log(`Failed to close database: ${error}`, 'error');
     }
   }
+
+  // ========== VECTOR SEARCH FALLBACK METHODS ==========
+  // These provide compatibility with the enhanced MCP features without requiring the full MCP server
+
+  /**
+   * Simple vector search fallback - uses text-based search for compatibility
+   */
+  async vectorSearchNodes(
+    query: string,
+    options: { limit?: number; threshold?: number; provider?: string; model?: string; nodeTypes?: string[] } = {}
+  ): Promise<Array<{ node: Node; similarity: number }>> {
+    try {
+      log(`Vector search fallback for: "${query}"`);
+      
+      // Use regular text search as fallback
+      const { limit = 20, nodeTypes = [] } = options;
+      
+      const queryParams: QueryNodes = {
+        label: query,
+        limit: limit
+      };
+      
+      // Add type filter if specified
+      if (nodeTypes.length > 0) {
+        queryParams.type = nodeTypes[0];
+      }
+      
+      const nodes = await this.queryNodes(queryParams);
+      
+      // Calculate simple text similarity as fallback
+      return nodes.map(node => ({
+        node,
+        similarity: this.calculateTextSimilarity(query, node.label)
+      })).sort((a, b) => b.similarity - a.similarity);
+      
+    } catch (error) {
+      log(`Vector search fallback error: ${error}`, 'error');
+      return [];
+    }
+  }
+
+  /**
+   * Hybrid search fallback - combines exact and partial text matches
+   */
+  async hybridSimilaritySearch(
+    data: { type: string; label: string; properties?: Record<string, unknown> },
+    options: any = {}
+  ): Promise<Node[]> {
+    try {
+      log(`Hybrid search fallback for: ${data.type} - ${data.label}`);
+      
+      // Search for similar nodes based on type and label
+      const typeMatches = await this.queryNodes({ type: data.type, limit: 50 });
+      const labelMatches = await this.queryNodes({ label: data.label, limit: 50 });
+      
+      // Combine and deduplicate
+      const allMatches = new Map<string, Node>();
+      
+      [...typeMatches, ...labelMatches].forEach(node => {
+        if (!allMatches.has(node.id)) {
+          allMatches.set(node.id, node);
+        }
+      });
+      
+      return Array.from(allMatches.values()).slice(0, options.limit || 10);
+      
+    } catch (error) {
+      log(`Hybrid search fallback error: ${error}`, 'error');
+      return [];
+    }
+  }
+
+  /**
+   * Contextual information fallback - provides related nodes through simple queries
+   */
+  async getContextualInformation(
+    query: string,
+    options: any = {}
+  ): Promise<{
+    directMatches: Node[];
+    relatedNodes: Array<{ node: Node; relationship: string; distance: number }>;
+    summary: { totalNodes: number; nodeTypes: Record<string, number>; keyRelationships: string[]; confidence: number };
+  }> {
+    try {
+      log(`Contextual search fallback for: "${query}"`);
+      
+      // Get direct matches
+      const directMatches = await this.queryNodes({ label: query, limit: options.limit || 10 });
+      
+      // Simple related nodes search - find nodes of similar types
+      const relatedNodes: Array<{ node: Node; relationship: string; distance: number }> = [];
+      
+      if (directMatches.length > 0) {
+        const types = Array.from(new Set(directMatches.map(n => n.type)));
+        
+        for (const type of types) {
+          const typeNodes = await this.queryNodes({ type, limit: 5 });
+          typeNodes.forEach(node => {
+            if (!directMatches.find(dm => dm.id === node.id)) {
+              relatedNodes.push({
+                node,
+                relationship: 'same_type',
+                distance: 1
+              });
+            }
+          });
+        }
+      }
+      
+      // Generate summary
+      const allNodes = [...directMatches, ...relatedNodes.map(r => r.node)];
+      const nodeTypes: Record<string, number> = {};
+      
+      allNodes.forEach(node => {
+        nodeTypes[node.type] = (nodeTypes[node.type] || 0) + 1;
+      });
+      
+      return {
+        directMatches,
+        relatedNodes: relatedNodes.slice(0, 10),
+        summary: {
+          totalNodes: allNodes.length,
+          nodeTypes,
+          keyRelationships: ['same_type'],
+          confidence: directMatches.length > 0 ? 0.8 : 0.2
+        }
+      };
+      
+    } catch (error) {
+      log(`Contextual search fallback error: ${error}`, 'error');
+      return {
+        directMatches: [],
+        relatedNodes: [],
+        summary: { totalNodes: 0, nodeTypes: {}, keyRelationships: [], confidence: 0 }
+      };
+    }
+  }
+
+  /**
+   * Generate embeddings fallback - just logs that embeddings aren't available
+   */
+  async generateMissingEmbeddings(): Promise<{ processed: number; errors: number; provider?: string; model?: string }> {
+    log('Embedding generation not available in VS Code extension - use MCP server for vector search', 'warn');
+    
+    // Count nodes without thinking about embeddings
+    const allNodes = await this.queryNodes({ limit: 1000 });
+    
+    return {
+      processed: 0,
+      errors: 0,
+      provider: 'vscode-fallback',
+      model: 'text-only'
+    };
+  }
+
+  /**
+   * Get embedding provider info fallback
+   */
+  async getEmbeddingProviderInfo(): Promise<Array<{
+    name: string;
+    available: boolean;
+    defaultModel: string;
+    supportedModels: string[];
+  }>> {
+    return [
+      {
+        name: 'vscode-fallback',
+        available: true,
+        defaultModel: 'text-search',
+        supportedModels: ['text-search']
+      }
+    ];
+  }
+
+  /**
+   * Simple text similarity calculation
+   */
+  private calculateTextSimilarity(query: string, text: string): number {
+    const q = query.toLowerCase();
+    const t = text.toLowerCase();
+    
+    // Exact match
+    if (t === q) return 1.0;
+    
+    // Contains query
+    if (t.includes(q)) return 0.8;
+    
+    // Starts with query
+    if (t.startsWith(q)) return 0.6;
+    
+    // Word overlap
+    const qWords = q.split(/\s+/);
+    const tWords = t.split(/\s+/);
+    const overlap = qWords.filter(word => tWords.some(tw => tw.includes(word)));
+    
+    if (overlap.length > 0) {
+      return 0.4 * (overlap.length / qWords.length);
+    }
+    
+    return 0;
+  }
 }

@@ -15,6 +15,11 @@ import type {
   QueryNodes,
 } from '../types/schema.js';
 import { edges, nodes, vectorSearchCache } from './schema.js';
+import { 
+  EmbeddingProviderFactory, 
+  logEmbeddingSetup,
+  type EmbeddingResult 
+} from '../providers/embedding-providers.js';
 
 // Zod schemas for runtime validation and type safety
 const DbNodeResultSchema = z.object({
@@ -150,6 +155,7 @@ export class KnowledgeGraphDB {
   private db: ReturnType<typeof drizzle>;
   private sqlite: Database.Database;
   private vectorExtensionAvailable = false;
+  private embeddingFactory: EmbeddingProviderFactory;
 
   /**
    * Creates a new instance of KnowledgeGraphDB.
@@ -203,6 +209,10 @@ export class KnowledgeGraphDB {
 
     // Initialize tables with retry logic
     this.initializeTablesWithRetry();
+
+    // Initialize embedding providers
+    this.embeddingFactory = EmbeddingProviderFactory.getInstance();
+    logEmbeddingSetup();
 
     console.error('[KnowledgeGraph] Database initialized successfully');
   }
@@ -400,7 +410,7 @@ export class KnowledgeGraphDB {
     return node;
   }
 
-  // Smart node creation with optional merging (now with vector embeddings)
+  // Smart node creation with optional merging (now with local/cloud provider support)
   async createOrMergeNode(
     data: CreateNode,
     options: {
@@ -408,6 +418,7 @@ export class KnowledgeGraphDB {
       similarityThreshold?: number;
       matchFields?: ('type' | 'label' | 'properties')[];
       useVectorSimilarity?: boolean;
+      embeddingProvider?: string;
       embeddingModel?: string;
     } = {}
   ): Promise<{ node: Node; action: 'created' | 'merged' | 'skipped' }> {
@@ -416,7 +427,8 @@ export class KnowledgeGraphDB {
       similarityThreshold = 0.8,
       matchFields = ['type', 'label'],
       useVectorSimilarity = true,
-      embeddingModel = 'simple',
+      embeddingModel,
+      embeddingProvider,
     } = options;
 
     let candidates: Node[] = [];
@@ -426,6 +438,7 @@ export class KnowledgeGraphDB {
       try {
         candidates = await this.hybridSimilaritySearch(data, {
           threshold: similarityThreshold,
+          provider: embeddingProvider,
           model: embeddingModel,
         });
       } catch (error) {
@@ -442,7 +455,10 @@ export class KnowledgeGraphDB {
 
       // Generate embedding for the new node
       try {
-        await this.generateNodeEmbedding(node.id, embeddingModel);
+        await this.generateNodeEmbedding(node.id, { 
+          provider: embeddingProvider, 
+          model: embeddingModel 
+        });
       } catch (error) {
         console.error(
           `[VectorSearch] Failed to generate embedding for new node ${node.id}:`,
@@ -467,7 +483,10 @@ export class KnowledgeGraphDB {
 
         // Regenerate embedding after update
         try {
-          await this.generateNodeEmbedding(bestMatch.id, embeddingModel);
+          await this.generateNodeEmbedding(bestMatch.id, { 
+          provider: embeddingProvider, 
+          model: embeddingModel 
+        });
         } catch (error) {
           console.error(
             `[VectorSearch] Failed to regenerate embedding for updated node ${bestMatch.id}:`,
@@ -483,7 +502,10 @@ export class KnowledgeGraphDB {
 
         // Regenerate embedding after merge
         try {
-          await this.generateNodeEmbedding(bestMatch.id, embeddingModel);
+          await this.generateNodeEmbedding(bestMatch.id, { 
+          provider: embeddingProvider, 
+          model: embeddingModel 
+        });
         } catch (error) {
           console.error(
             `[VectorSearch] Failed to regenerate embedding for merged node ${bestMatch.id}:`,
@@ -625,74 +647,17 @@ export class KnowledgeGraphDB {
     return result;
   }
 
-  // ========== VECTOR EMBEDDING & SEARCH METHODS ==========
+    // ========== VECTOR EMBEDDING & SEARCH METHODS ==========
 
-  // Generate a simple text embedding (in production, use OpenAI or other embedding models)
-  private async generateEmbedding(text: string, model = 'simple'): Promise<number[]> {
-    if (model === 'simple') {
-      return this.generateSimpleEmbedding(text);
-    }
-
-    // In production, you would call an embedding API here:
-    // return await this.callEmbeddingAPI(text, model);
-
-    throw new Error(`Embedding model ${model} not supported`);
+  // Generate text embedding using the configured provider (Ollama local by default)
+  private async generateEmbedding(
+    text: string, 
+    options: { provider?: string; model?: string } = {}
+  ): Promise<EmbeddingResult> {
+    return await this.embeddingFactory.generateEmbedding(text, options);
   }
 
-  // Simple embedding generation using character frequencies and n-grams
-  private generateSimpleEmbedding(text: string): number[] {
-    const normalizedText = text.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-    const words = normalizedText.split(/\s+/).filter((w) => w.length > 0);
 
-    // Create a 100-dimensional embedding vector
-    const dimension = 100;
-    const embedding = new Array(dimension).fill(0);
-
-    // Character frequency features
-    for (let i = 0; i < normalizedText.length; i++) {
-      const char = normalizedText.charCodeAt(i);
-      if (char >= 97 && char <= 122) {
-        // a-z
-        embedding[char - 97] += 1;
-      } else if (char >= 48 && char <= 57) {
-        // 0-9
-        embedding[26 + (char - 48)] += 1;
-      }
-    }
-
-    // Word position features
-    for (let i = 0; i < words.length && i < 20; i++) {
-      const wordHash = this.simpleHash(words[i]) % 40;
-      embedding[36 + wordHash] += 1;
-    }
-
-    // Length features
-    embedding[76] = text.length;
-    embedding[77] = words.length;
-    embedding[78] = words.reduce((sum, w) => sum + w.length, 0) / Math.max(words.length, 1);
-
-    // Bigram features
-    for (let i = 0; i < words.length - 1; i++) {
-      const bigram = words[i] + words[i + 1];
-      const bigramHash = this.simpleHash(bigram) % 20;
-      embedding[79 + bigramHash] += 1;
-    }
-
-    // Normalize the embedding vector
-    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    return magnitude > 0 ? embedding.map((val) => val / magnitude) : embedding;
-  }
-
-  // Simple hash function for string features
-  private simpleHash(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return Math.abs(hash);
-  }
 
   // Calculate cosine similarity between two vectors
   private cosineSimilarity(vec1: number[], vec2: number[]): number {
@@ -712,27 +677,35 @@ export class KnowledgeGraphDB {
     return magnitude === 0 ? 0 : dotProduct / magnitude;
   }
 
-  // Generate and store embedding for a node
-  async generateNodeEmbedding(nodeId: string, model = 'simple'): Promise<void> {
+  // Generate and store embedding for a node using the configured provider
+  async generateNodeEmbedding(
+    nodeId: string, 
+    options: { provider?: string; model?: string } = {}
+  ): Promise<EmbeddingResult> {
     const node = await this.getNode(nodeId);
     if (!node) throw new Error(`Node ${nodeId} not found`);
 
     // Create embedding text from node data
     const embeddingText = [node.type, node.label, JSON.stringify(node.properties || {})].join(' ');
 
-    const embedding = await this.generateEmbedding(embeddingText, model);
+    const result = await this.generateEmbedding(embeddingText, options);
 
     await this.db
       .update(nodes)
       .set({
-        embedding: JSON.stringify(embedding),
-        embeddingModel: model,
+        embedding: JSON.stringify(result.embedding),
+        embeddingModel: `${result.provider}:${result.model}`,
       })
       .where(eq(nodes.id, nodeId));
+
+    return result;
   }
 
-  // Generate and store embedding for an edge
-  async generateEdgeEmbedding(edgeId: string, model = 'simple'): Promise<void> {
+  // Generate and store embedding for an edge using the configured provider
+  async generateEdgeEmbedding(
+    edgeId: string, 
+    options: { provider?: string; model?: string } = {}
+  ): Promise<EmbeddingResult> {
     const edge = await this.getEdge(edgeId);
     if (!edge) throw new Error(`Edge ${edgeId} not found`);
 
@@ -748,31 +721,41 @@ export class KnowledgeGraphDB {
       JSON.stringify(edge.properties || {}),
     ].join(' ');
 
-    const embedding = await this.generateEmbedding(embeddingText, model);
+    const result = await this.generateEmbedding(embeddingText, options);
 
     await this.db
       .update(edges)
       .set({
-        embedding: JSON.stringify(embedding),
-        embeddingModel: model,
+        embedding: JSON.stringify(result.embedding),
+        embeddingModel: `${result.provider}:${result.model}`,
       })
       .where(eq(edges.id, edgeId));
+
+    return result;
   }
 
-  // Semantic search using vector similarity
+  // Semantic search using vector similarity with configurable provider
   async vectorSearchNodes(
     query: string,
     options: {
       limit?: number;
       threshold?: number;
+      provider?: string;
       model?: string;
       nodeTypes?: string[];
     } = {}
   ): Promise<Array<{ node: Node; similarity: number }>> {
-    const { limit = 20, threshold = 0.1, model = 'simple', nodeTypes = [] } = options;
+    const { 
+      limit = 20, 
+      threshold = 0.1, 
+      provider, 
+      model, 
+      nodeTypes = [] 
+    } = options;
 
-    // Generate query embedding
-    const queryEmbedding = await this.generateEmbedding(query, model);
+    // Generate query embedding using the configured provider
+    const queryResult = await this.generateEmbedding(query, { provider, model });
+    const queryEmbedding = queryResult.embedding;
 
     // Get all nodes with embeddings
     let dbQuery = this.db.select().from(nodes);
@@ -804,7 +787,7 @@ export class KnowledgeGraphDB {
 
           results.push({ node, similarity });
         }
-      } catch (error) {}
+      } catch (error) { }
     }
 
     // Sort by similarity (highest first) and limit results
@@ -818,6 +801,7 @@ export class KnowledgeGraphDB {
       vectorWeight?: number;
       traditionalWeight?: number;
       threshold?: number;
+      provider?: string;
       model?: string;
     } = {}
   ): Promise<Node[]> {
@@ -825,7 +809,8 @@ export class KnowledgeGraphDB {
       vectorWeight = 0.6,
       traditionalWeight = 0.4,
       threshold = 0.7,
-      model = 'simple',
+      provider,
+      model,
     } = options;
 
     // Get traditional similarity results
@@ -835,9 +820,10 @@ export class KnowledgeGraphDB {
       0.1 // Lower threshold for traditional search
     );
 
-    // Generate query embedding
+    // Generate query embedding using configured provider
     const queryText = [data.type, data.label, JSON.stringify(data.properties || {})].join(' ');
-    const queryEmbedding = await this.generateEmbedding(queryText, model);
+    const queryResult = await this.generateEmbedding(queryText, { provider, model });
+    const queryEmbedding = queryResult.embedding;
 
     // Calculate hybrid similarities
     const hybridResults: Array<{ node: Node; similarity: number }> = [];
@@ -875,8 +861,8 @@ export class KnowledgeGraphDB {
 
   // Batch generate embeddings for all nodes without embeddings
   async generateMissingEmbeddings(
-    model = 'simple'
-  ): Promise<{ processed: number; errors: number }> {
+    options: string | { provider?: string; model?: string } = {}
+  ): Promise<{ processed: number; errors: number; provider?: string; model?: string }> {
     let processed = 0;
     let errors = 0;
 
@@ -890,9 +876,18 @@ export class KnowledgeGraphDB {
       `[VectorSearch] Generating embeddings for ${nodesWithoutEmbeddings.length} nodes...`
     );
 
+    const embeddingOptions = typeof options === 'string' ? { model: options } : options;
+    let usedProvider = '';
+    let usedModel = '';
+
     for (const node of nodesWithoutEmbeddings) {
       try {
-        await this.generateNodeEmbedding(node.id, model);
+        const result = await this.generateNodeEmbedding(node.id, embeddingOptions);
+        if (!usedProvider) {
+          usedProvider = result.provider;
+          usedModel = result.model;
+          console.error(`[VectorSearch] Using provider: ${result.provider} with model: ${result.model}`);
+        }
         processed++;
 
         if (processed % 100 === 0) {
@@ -918,7 +913,7 @@ export class KnowledgeGraphDB {
 
     for (const edge of edgesWithoutEmbeddings) {
       try {
-        await this.generateEdgeEmbedding(edge.id, model);
+        await this.generateEdgeEmbedding(edge.id, embeddingOptions);
         processed++;
 
         if (processed % 100 === 0) {
@@ -933,7 +928,17 @@ export class KnowledgeGraphDB {
     console.error(
       `[VectorSearch] Embedding generation complete. Processed: ${processed}, Errors: ${errors}`
     );
-    return { processed, errors };
+    return { processed, errors, provider: usedProvider, model: usedModel };
+  }
+
+  // Get embedding provider information
+  async getEmbeddingProviderInfo(): Promise<Array<{
+    name: string;
+    available: boolean;
+    defaultModel: string;
+    supportedModels: string[];
+  }>> {
+    return await this.embeddingFactory.getProviderInfo();
   }
 
   /**

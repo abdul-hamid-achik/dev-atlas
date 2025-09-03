@@ -51,6 +51,9 @@ export class GraphVisualizerPanel {
                         this._update(); // Refresh the webview content
                         vscode.window.showInformationMessage('Graph data refreshed');
                         return;
+                    case 'globalSearch':
+                        vscode.commands.executeCommand('dev-atlas.searchKnowledgeGraph');
+                        return;
                 }
             },
             null,
@@ -654,8 +657,9 @@ export class GraphVisualizerPanel {
                 <button onclick="togglePhysics()">Toggle Physics</button>
                 <button onclick="fitToWindow()">Fit to Window</button>
                 <button onclick="refreshGraph()">Refresh Data</button>
-                <input type="text" id="search-input" placeholder="Search nodes..." style="padding: 4px 8px; margin-left: 8px; border: 1px solid var(--vscode-input-border); background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px;">
-                <button onclick="searchNodes()">Search</button>
+                <button onclick="globalSearch()" title="Open global search with advanced options">🔍 Global Search</button>
+                <input type="text" id="search-input" placeholder="Search visible nodes..." style="padding: 4px 8px; margin-left: 8px; border: 1px solid var(--vscode-input-border); background-color: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px;">
+                <button onclick="searchNodes()">Highlight</button>
                 <button onclick="clearSearch()">Clear</button>
             </div>
             
@@ -1047,6 +1051,12 @@ export class GraphVisualizerPanel {
             function refreshGraph() {
                 vscode.postMessage({
                     command: 'refreshGraph'
+                });
+            }
+            
+            function globalSearch() {
+                vscode.postMessage({
+                    command: 'globalSearch'
                 });
             }
             
