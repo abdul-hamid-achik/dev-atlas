@@ -6,8 +6,8 @@
     [
       "@semantic-release/exec",
       {
-        "verifyConditionsCmd": "vsce verify-pat ${VSCE_PAT}",
-        "publishCmd": "vsce publish --pre-release --pat ${VSCE_PAT}"
+        "verifyConditionsCmd": "npx vsce verify-pat abdulachik --pat ${VSCE_PAT}",
+        "publishCmd": "npx vsce publish --pre-release --pat ${VSCE_PAT}"
       }
     ],
     [
@@ -17,7 +17,9 @@
           {
             "path": "*.vsix"
           }
-        ]
+        ],
+        "failComment": false,
+        "failTitle": false
       }
     ]
   ]
