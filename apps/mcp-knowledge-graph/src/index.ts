@@ -1550,12 +1550,12 @@ class KnowledgeGraphMCPServer {
                 // Ensure both nodes have embeddings
                 try {
                   await this.db.generateNodeEmbedding(node1.id, {
-                    provider: (validatedArgs as any).provider,
-                    model: validatedArgs.model
+                    provider: validatedArgs.provider,
+                    model: validatedArgs.model,
                   });
                   await this.db.generateNodeEmbedding(node2.id, {
-                    provider: (validatedArgs as any).provider,
-                    model: validatedArgs.model
+                    provider: validatedArgs.provider,
+                    model: validatedArgs.model,
                   });
                 } catch (error) {
                   // Skip if embedding generation fails
@@ -1580,7 +1580,7 @@ class KnowledgeGraphMCPServer {
                       similarity: similarity,
                       percentage: `${(similarity * 100).toFixed(1)}%`,
                     });
-                  } catch (error) { }
+                  } catch (error) {}
                 }
               }
             }
@@ -1605,16 +1605,15 @@ class KnowledgeGraphMCPServer {
                 {
                   type: 'text',
                   text: `Available Embedding Providers:\n\n${providerInfo
-                    .map(p =>
-                      `${p.name.toUpperCase()} (${p.available ? '✅ Available' : '❌ Unavailable'})\n` +
-                      `  Default Model: ${p.defaultModel}\n` +
-                      `  Supported Models: ${p.supportedModels.join(', ')}\n`
+                    .map(
+                      (p) =>
+                        `${p.name.toUpperCase()} (${p.available ? '✅ Available' : '❌ Unavailable'})\n` +
+                        `  Default Model: ${p.defaultModel}\n` +
+                        `  Supported Models: ${p.supportedModels.join(', ')}\n`
                     )
-                    .join('\n')}\n\nConfiguration:\n` +
-                    `Set EMBEDDING_PROVIDER environment variable to choose provider\n` +
-                    `Ollama (Local): Run 'ollama serve' then 'ollama pull nomic-embed-text'\n` +
-                    `OpenAI (Cloud): Set OPENAI_API_KEY environment variable\n` +
-                    `Simple (Fallback): Always available, JavaScript-only`,
+                    .join(
+                      '\n'
+                    )}\n\nConfiguration:\nSet EMBEDDING_PROVIDER environment variable to choose provider\nOllama (Local): Run 'ollama serve' then 'ollama pull nomic-embed-text'\nOpenAI (Cloud): Set OPENAI_API_KEY environment variable\nSimple (Fallback): Always available, JavaScript-only`,
                 },
               ],
             };
@@ -1638,15 +1637,7 @@ class KnowledgeGraphMCPServer {
               content: [
                 {
                   type: 'text',
-                  text: `Configuration Preview:\nProvider: ${provider}\nModel: ${model || 'default'}\n\n` +
-                    `To apply this configuration permanently, set environment variables:\n` +
-                    `EMBEDDING_PROVIDER=${provider}\n` +
-                    `${model ? `EMBEDDING_MODEL=${model}\n` : ''}` +
-                    `${config?.ollamaUrl ? `OLLAMA_URL=${config.ollamaUrl}\n` : ''}` +
-                    `${config?.openaiApiKey ? `OPENAI_API_KEY=${config.openaiApiKey}\n` : ''}` +
-                    `${config?.timeout ? `EMBEDDING_TIMEOUT=${config.timeout}\n` : ''}` +
-                    `${config?.maxRetries ? `EMBEDDING_RETRIES=${config.maxRetries}\n` : ''}` +
-                    `\nRestart the MCP server to apply configuration changes.`,
+                  text: `Configuration Preview:\nProvider: ${provider}\nModel: ${model || 'default'}\n\nTo apply this configuration permanently, set environment variables:\nEMBEDDING_PROVIDER=${provider}\n${model ? `EMBEDDING_MODEL=${model}\n` : ''}${config?.ollamaUrl ? `OLLAMA_URL=${config.ollamaUrl}\n` : ''}${config?.openaiApiKey ? `OPENAI_API_KEY=${config.openaiApiKey}\n` : ''}${config?.timeout ? `EMBEDDING_TIMEOUT=${config.timeout}\n` : ''}${config?.maxRetries ? `EMBEDDING_RETRIES=${config.maxRetries}\n` : ''}\nRestart the MCP server to apply configuration changes.`,
                 },
               ],
             };

@@ -19,14 +19,16 @@ export interface EmbeddingResult {
 
 // ========== CONFIGURATION SCHEMAS ==========
 
-export const EmbeddingConfigSchema = z.object({
-  provider: z.enum(['ollama', 'openai', 'simple']).default('ollama'),
-  model: z.string().optional(),
-  ollamaUrl: z.string().url().optional().default('http://localhost:11434'),
-  openaiApiKey: z.string().optional(),
-  maxRetries: z.number().int().min(1).max(5).optional().default(3),
-  timeout: z.number().int().min(1000).max(30000).optional().default(10000),
-}).strict();
+export const EmbeddingConfigSchema = z
+  .object({
+    provider: z.enum(['ollama', 'openai', 'simple']).default('ollama'),
+    model: z.string().optional(),
+    ollamaUrl: z.string().url().optional().default('http://localhost:11434'),
+    openaiApiKey: z.string().optional(),
+    maxRetries: z.number().int().min(1).max(5).optional().default(3),
+    timeout: z.number().int().min(1000).max(30000).optional().default(10000),
+  })
+  .strict();
 
 export type EmbeddingConfig = z.infer<typeof EmbeddingConfigSchema>;
 
@@ -63,11 +65,11 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
   getSupportedModels(): string[] {
     return [
-      'nomic-embed-text',     // 768 dimensions - excellent for general use
-      'mxbai-embed-large',    // 1024 dimensions - high quality
-      'all-minilm',           // 384 dimensions - fast and efficient
-      'bge-large',            // 1024 dimensions - very accurate
-      'snowflake-arctic-embed' // 1024 dimensions - latest model
+      'nomic-embed-text', // 768 dimensions - excellent for general use
+      'mxbai-embed-large', // 1024 dimensions - high quality
+      'all-minilm', // 384 dimensions - fast and efficient
+      'bge-large', // 1024 dimensions - very accurate
+      'snowflake-arctic-embed', // 1024 dimensions - latest model
     ];
   }
 
@@ -96,25 +98,26 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
         }
 
         const result = await response.json();
-        
+
         if (!result.embedding || !Array.isArray(result.embedding)) {
           throw new Error('Invalid embedding response from Ollama');
         }
 
         console.error(`[Ollama] Generated ${result.embedding.length}D embedding using ${model}`);
         return result.embedding;
-
       } catch (error) {
         console.error(`[Ollama] Attempt ${attempt}/${this.maxRetries} failed:`, error);
-        
+
         if (attempt === this.maxRetries) {
-          throw new Error(`Failed to generate Ollama embedding after ${this.maxRetries} attempts: ${
-            error instanceof Error ? error.message : String(error)
-          }`);
+          throw new Error(
+            `Failed to generate Ollama embedding after ${this.maxRetries} attempts: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
         }
 
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
 
@@ -132,7 +135,7 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
       if (!response.ok) {
         console.error(`[Ollama] Model ${model} not found, attempting to pull...`);
-        
+
         // Try to pull the model
         const pullResponse = await fetch(`${this.baseUrl}/api/pull`, {
           method: 'POST',
@@ -215,50 +218,52 @@ export class SimpleEmbeddingProvider implements EmbeddingProvider {
 
   private generateSimpleEmbedding(text: string): number[] {
     const normalizedText = text.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-    const words = normalizedText.split(/\s+/).filter(w => w.length > 0);
-    
+    const words = normalizedText.split(/\s+/).filter((w) => w.length > 0);
+
     // Create a 100-dimensional embedding vector
     const dimension = 100;
     const embedding = new Array(dimension).fill(0);
-    
+
     // Character frequency features
     for (let i = 0; i < normalizedText.length; i++) {
       const char = normalizedText.charCodeAt(i);
-      if (char >= 97 && char <= 122) { // a-z
+      if (char >= 97 && char <= 122) {
+        // a-z
         embedding[char - 97] += 1;
-      } else if (char >= 48 && char <= 57) { // 0-9
+      } else if (char >= 48 && char <= 57) {
+        // 0-9
         embedding[26 + (char - 48)] += 1;
       }
     }
-    
+
     // Word position features
     for (let i = 0; i < words.length && i < 20; i++) {
       const wordHash = this.simpleHash(words[i]) % 40;
       embedding[36 + wordHash] += 1;
     }
-    
+
     // Length features
     embedding[76] = text.length;
     embedding[77] = words.length;
     embedding[78] = words.reduce((sum, w) => sum + w.length, 0) / Math.max(words.length, 1);
-    
+
     // Bigram features
     for (let i = 0; i < words.length - 1; i++) {
       const bigram = words[i] + words[i + 1];
       const bigramHash = this.simpleHash(bigram) % 20;
       embedding[79 + bigramHash] += 1;
     }
-    
+
     // Normalize the embedding vector
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    return magnitude > 0 ? embedding.map(val => val / magnitude) : embedding;
+    return magnitude > 0 ? embedding.map((val) => val / magnitude) : embedding;
   }
 
   private simpleHash(str: string): number {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
@@ -287,13 +292,16 @@ export class EmbeddingProviderFactory {
     // Always available fallback
     this.providers.set('simple', new SimpleEmbeddingProvider());
 
-    // Local Ollama provider  
+    // Local Ollama provider
     const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-    this.providers.set('ollama', new OllamaEmbeddingProvider({ 
-      baseUrl: ollamaUrl,
-      timeout: Number.parseInt(process.env.EMBEDDING_TIMEOUT || '10000'),
-      maxRetries: Number.parseInt(process.env.EMBEDDING_RETRIES || '3'),
-    }));
+    this.providers.set(
+      'ollama',
+      new OllamaEmbeddingProvider({
+        baseUrl: ollamaUrl,
+        timeout: Number.parseInt(process.env.EMBEDDING_TIMEOUT || '10000'),
+        maxRetries: Number.parseInt(process.env.EMBEDDING_RETRIES || '3'),
+      })
+    );
 
     // Optional OpenAI provider (disabled for now - uncomment OpenAIEmbeddingProvider class to enable)
     /*
@@ -309,26 +317,32 @@ export class EmbeddingProviderFactory {
   }
 
   async getProvider(preferredProvider?: string): Promise<EmbeddingProvider> {
-    if (this.currentProvider && (!preferredProvider || this.currentProvider.name === preferredProvider)) {
+    if (
+      this.currentProvider &&
+      (!preferredProvider || this.currentProvider.name === preferredProvider)
+    ) {
       return this.currentProvider;
     }
 
     // In test environment, always use simple provider for predictable behavior
     if (process.env.NODE_ENV === 'test') {
-      const simpleProvider = this.providers.get('simple')!;
+      const simpleProvider = this.providers.get('simple');
+      if (!simpleProvider) {
+        throw new Error('Simple provider not available in test environment');
+      }
       console.error('[EmbeddingFactory] Using simple provider for tests');
       this.currentProvider = simpleProvider;
       return simpleProvider;
     }
 
     // Provider priority: preferred -> env -> ollama -> simple
-    const providers = preferredProvider ? 
-      [preferredProvider, process.env.EMBEDDING_PROVIDER, 'ollama', 'simple'] :
-      [process.env.EMBEDDING_PROVIDER, 'ollama', 'simple'];
+    const providers = preferredProvider
+      ? [preferredProvider, process.env.EMBEDDING_PROVIDER, 'ollama', 'simple']
+      : [process.env.EMBEDDING_PROVIDER, 'ollama', 'simple'];
 
     for (const providerName of providers) {
       if (!providerName) continue;
-      
+
       const provider = this.providers.get(providerName);
       if (provider) {
         try {
@@ -339,30 +353,36 @@ export class EmbeddingProviderFactory {
             return provider;
           }
         } catch (error) {
-          console.error(`[EmbeddingFactory] Provider ${providerName} failed availability check:`, error);
+          console.error(
+            `[EmbeddingFactory] Provider ${providerName} failed availability check:`,
+            error
+          );
         }
       }
     }
 
     // Fallback to simple if nothing else works
-    const simpleProvider = this.providers.get('simple')!;
+    const simpleProvider = this.providers.get('simple');
+    if (!simpleProvider) {
+      throw new Error('No embedding providers available - simple provider not found');
+    }
     console.error('[EmbeddingFactory] Falling back to simple JavaScript provider');
     this.currentProvider = simpleProvider;
     return simpleProvider;
   }
 
   async generateEmbedding(
-    text: string, 
-    options: { 
-      provider?: string; 
-      model?: string; 
+    text: string,
+    options: {
+      provider?: string;
+      model?: string;
     } = {}
   ): Promise<EmbeddingResult> {
     const provider = await this.getProvider(options.provider);
     const model = options.model || provider.getDefaultModel();
-    
+
     const embedding = await provider.generateEmbedding(text, model);
-    
+
     return {
       embedding,
       model,
@@ -375,14 +395,16 @@ export class EmbeddingProviderFactory {
     return Array.from(this.providers.keys());
   }
 
-  async getProviderInfo(): Promise<Array<{
-    name: string;
-    available: boolean;
-    defaultModel: string;
-    supportedModels: string[];
-  }>> {
+  async getProviderInfo(): Promise<
+    Array<{
+      name: string;
+      available: boolean;
+      defaultModel: string;
+      supportedModels: string[];
+    }>
+  > {
     const info = [];
-    
+
     for (const [name, provider] of this.providers) {
       try {
         const available = await provider.isAvailable();
@@ -401,7 +423,7 @@ export class EmbeddingProviderFactory {
         });
       }
     }
-    
+
     return info;
   }
 
@@ -434,7 +456,7 @@ export function validateEmbeddingConfig(config: unknown): EmbeddingConfig {
 
 export function logEmbeddingSetup() {
   const config = getEmbeddingConfig();
-  
+
   console.error('[EmbeddingSetup] Configuration:');
   console.error(`  Provider: ${config.provider}`);
   console.error(`  Model: ${config.model || 'auto-detect'}`);
@@ -442,12 +464,12 @@ export function logEmbeddingSetup() {
   console.error(`  OpenAI API Key: ${config.openaiApiKey ? 'provided' : 'not provided'}`);
   console.error(`  Max Retries: ${config.maxRetries}`);
   console.error(`  Timeout: ${config.timeout}ms`);
-  
+
   if (config.provider === 'ollama') {
     console.error('[EmbeddingSetup] Using LOCAL Ollama for complete privacy and independence');
     console.error('[EmbeddingSetup] Make sure Ollama is running: ollama serve');
     console.error('[EmbeddingSetup] Install embedding model: ollama pull nomic-embed-text');
   }
-  
+
   return config;
 }

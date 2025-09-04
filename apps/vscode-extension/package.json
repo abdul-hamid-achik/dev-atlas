@@ -2,7 +2,7 @@
   "name": "dev-atlas-vscode-extension",
   "displayName": "Dev Atlas",
   "description": "Dev Atlas - Knowledge Graph Extension for VS Code/Cursor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "abdulachik",
   "license": "MIT",
   "repository": {
@@ -17,9 +17,7 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "categories": ["Other"],
   "icon": "icons/icon-128x128.png",
   "activationEvents": [
     "onCommand:dev-atlas.openKnowledgeGraph",
@@ -210,7 +208,7 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "dev-atlas.searchKnowledgeGraph", 
+        "command": "dev-atlas.searchKnowledgeGraph",
         "key": "ctrl+shift+f ctrl+shift+s",
         "mac": "cmd+shift+f cmd+shift+s",
         "when": "editorTextFocus"
@@ -224,12 +222,7 @@
           "type": "string",
           "default": "@",
           "description": "Prefix character to add before file paths when copying to clipboard (e.g., '@' for Cursor, '#' for other editors, or empty for no prefix)",
-          "examples": [
-            "@",
-            "#",
-            "",
-            ">"
-          ]
+          "examples": ["@", "#", "", ">"]
         },
         "devAtlas.autoOpenFiles": {
           "type": "boolean",
@@ -238,12 +231,7 @@
         },
         "devAtlas.defaultFileAction": {
           "type": "string",
-          "enum": [
-            "ask",
-            "open",
-            "copy",
-            "both"
-          ],
+          "enum": ["ask", "open", "copy", "both"],
           "default": "ask",
           "description": "Default action when clicking file nodes: ask (prompt user), open (open in editor), copy (copy to clipboard), both (open and copy)"
         }

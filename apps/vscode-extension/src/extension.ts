@@ -1,7 +1,11 @@
 import * as vscode from 'vscode';
 import { createEdgeCommand } from './commands/createEdge';
 import { createNodeCommand } from './commands/createNode';
-import { searchKnowledgeGraphCommand, advancedSearchCommand, vectorSearchCommand } from './commands/searchKnowledgeGraph';
+import {
+  advancedSearchCommand,
+  searchKnowledgeGraphCommand,
+  vectorSearchCommand,
+} from './commands/searchKnowledgeGraph';
 import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
 
@@ -18,7 +22,7 @@ const outputChannel = vscode.window.createOutputChannel('Dev Atlas');
 
 /**
  * Logs messages to both the VS Code output channel and console.
- * 
+ *
  * @param message The message to log
  * @param level The log level (info, warn, or error)
  */
@@ -44,7 +48,7 @@ export function log(message: string, level: 'info' | 'warn' | 'error' = 'info') 
 /**
  * Activates the Dev Atlas VS Code extension.
  * Sets up the knowledge graph provider, registers commands, and configures the UI.
- * 
+ *
  * @param context The VS Code extension context providing access to extension lifecycle and resources
  */
 export function activate(context: vscode.ExtensionContext) {
@@ -82,32 +86,38 @@ export function activate(context: vscode.ExtensionContext) {
     createEdgeCommand();
   });
 
-  const configureFilePrefixCmd = vscode.commands.registerCommand('dev-atlas.configureFilePrefix', async () => {
-    log('Configure file prefix command triggered');
-    const config = vscode.workspace.getConfiguration('devAtlas');
-    const currentPrefix = config.get<string>('filePathPrefix', '@');
+  const configureFilePrefixCmd = vscode.commands.registerCommand(
+    'dev-atlas.configureFilePrefix',
+    async () => {
+      log('Configure file prefix command triggered');
+      const config = vscode.workspace.getConfiguration('devAtlas');
+      const currentPrefix = config.get<string>('filePathPrefix', '@');
 
-    const newPrefix = await vscode.window.showInputBox({
-      prompt: 'Enter file path prefix for clipboard copying',
-      value: currentPrefix,
-      placeHolder: 'e.g., @ for Cursor, # for others, or empty for no prefix',
-      validateInput: (value) => {
-        // Allow any string including empty
-        return null;
+      const newPrefix = await vscode.window.showInputBox({
+        prompt: 'Enter file path prefix for clipboard copying',
+        value: currentPrefix,
+        placeHolder: 'e.g., @ for Cursor, # for others, or empty for no prefix',
+        validateInput: (value) => {
+          // Allow any string including empty
+          return null;
+        },
+      });
+
+      if (newPrefix !== undefined) {
+        await config.update('filePathPrefix', newPrefix, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`File path prefix updated to: "${newPrefix}"`);
+        log(`File path prefix updated to: "${newPrefix}"`);
       }
-    });
-
-    if (newPrefix !== undefined) {
-      await config.update('filePathPrefix', newPrefix, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(`File path prefix updated to: "${newPrefix}"`);
-      log(`File path prefix updated to: "${newPrefix}"`);
     }
-  });
+  );
 
-  const searchKnowledgeGraphCmd = vscode.commands.registerCommand('dev-atlas.searchKnowledgeGraph', () => {
-    log('Search knowledge graph command triggered');
-    searchKnowledgeGraphCommand();
-  });
+  const searchKnowledgeGraphCmd = vscode.commands.registerCommand(
+    'dev-atlas.searchKnowledgeGraph',
+    () => {
+      log('Search knowledge graph command triggered');
+      searchKnowledgeGraphCommand();
+    }
+  );
 
   const advancedSearchCmd = vscode.commands.registerCommand('dev-atlas.advancedSearch', () => {
     log('Advanced search command triggered');
@@ -119,46 +129,52 @@ export function activate(context: vscode.ExtensionContext) {
     vectorSearchCommand();
   });
 
-  const filterTreeViewCmd = vscode.commands.registerCommand('dev-atlas.filterTreeView', async () => {
-    log('Filter tree view command triggered');
+  const filterTreeViewCmd = vscode.commands.registerCommand(
+    'dev-atlas.filterTreeView',
+    async () => {
+      log('Filter tree view command triggered');
 
-    const filterType = await vscode.window.showQuickPick([
-      { label: '🔍 Search Filter', description: 'Filter by search term', value: 'search' },
-      { label: '🏷️ Type Filter', description: 'Filter by node type', value: 'type' }
-    ], {
-      placeHolder: 'Choose filter type'
-    });
+      const filterType = await vscode.window.showQuickPick(
+        [
+          { label: '🔍 Search Filter', description: 'Filter by search term', value: 'search' },
+          { label: '🏷️ Type Filter', description: 'Filter by node type', value: 'type' },
+        ],
+        {
+          placeHolder: 'Choose filter type',
+        }
+      );
 
-    if (!filterType) {
-      return;
-    }
-
-    if (filterType.value === 'search') {
-      const searchTerm = await vscode.window.showInputBox({
-        prompt: 'Enter search term to filter tree view',
-        placeHolder: 'Filter nodes by label or type'
-      });
-
-      if (searchTerm !== undefined) {
-        provider.setSearchFilter(searchTerm);
-        vscode.window.showInformationMessage(
-          searchTerm ? `Tree filtered by: "${searchTerm}"` : 'Search filter cleared'
-        );
+      if (!filterType) {
+        return;
       }
-    } else {
-      const typeTerm = await vscode.window.showInputBox({
-        prompt: 'Enter node type to filter by',
-        placeHolder: 'e.g., Framework, Language, Tool'
-      });
 
-      if (typeTerm !== undefined) {
-        provider.setTypeFilter(typeTerm);
-        vscode.window.showInformationMessage(
-          typeTerm ? `Tree filtered by type: "${typeTerm}"` : 'Type filter cleared'
-        );
+      if (filterType.value === 'search') {
+        const searchTerm = await vscode.window.showInputBox({
+          prompt: 'Enter search term to filter tree view',
+          placeHolder: 'Filter nodes by label or type',
+        });
+
+        if (searchTerm !== undefined) {
+          provider.setSearchFilter(searchTerm);
+          vscode.window.showInformationMessage(
+            searchTerm ? `Tree filtered by: "${searchTerm}"` : 'Search filter cleared'
+          );
+        }
+      } else {
+        const typeTerm = await vscode.window.showInputBox({
+          prompt: 'Enter node type to filter by',
+          placeHolder: 'e.g., Framework, Language, Tool',
+        });
+
+        if (typeTerm !== undefined) {
+          provider.setTypeFilter(typeTerm);
+          vscode.window.showInformationMessage(
+            typeTerm ? `Tree filtered by type: "${typeTerm}"` : 'Type filter cleared'
+          );
+        }
       }
     }
-  });
+  );
 
   const clearTreeFiltersCmd = vscode.commands.registerCommand('dev-atlas.clearTreeFilters', () => {
     log('Clear tree filters command triggered');

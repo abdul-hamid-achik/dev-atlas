@@ -51,7 +51,8 @@ export class KnowledgeGraphEdge extends vscode.TreeItem {
  * Handles data loading, refresh, and interaction with the knowledge graph database.
  */
 export class KnowledgeGraphProvider
-  implements vscode.TreeDataProvider<KnowledgeGraphNode | KnowledgeGraphEdge> {
+  implements vscode.TreeDataProvider<KnowledgeGraphNode | KnowledgeGraphEdge>
+{
   private _onDidChangeTreeData: vscode.EventEmitter<
     KnowledgeGraphNode | KnowledgeGraphEdge | undefined | null | undefined
   > = new vscode.EventEmitter<
@@ -64,8 +65,8 @@ export class KnowledgeGraphProvider
   private nodes: KnowledgeGraphNode[] = [];
   private edges: KnowledgeGraphEdge[] = [];
   private db: KnowledgeGraphDB | null = null;
-  private searchFilter: string = '';
-  private typeFilter: string = '';
+  private searchFilter = '';
+  private typeFilter = '';
 
   constructor() {
     this.initializeDatabase();
@@ -276,16 +277,17 @@ export class KnowledgeGraphProvider
     // Apply search filter
     if (this.searchFilter) {
       const searchTerm = this.searchFilter.toLowerCase();
-      filtered = filtered.filter(node =>
-        node.label.toLowerCase().includes(searchTerm) ||
-        node.type.toLowerCase().includes(searchTerm)
+      filtered = filtered.filter(
+        (node) =>
+          node.label.toLowerCase().includes(searchTerm) ||
+          node.type.toLowerCase().includes(searchTerm)
       );
     }
 
     // Apply type filter
     if (this.typeFilter) {
-      filtered = filtered.filter(node =>
-        node.type.toLowerCase() === this.typeFilter.toLowerCase()
+      filtered = filtered.filter(
+        (node) => node.type.toLowerCase() === this.typeFilter.toLowerCase()
       );
     }
 
@@ -327,7 +329,7 @@ export class KnowledgeGraphProvider
     return {
       searchFilter: this.searchFilter,
       typeFilter: this.typeFilter,
-      hasFilters: !!(this.searchFilter || this.typeFilter)
+      hasFilters: !!(this.searchFilter || this.typeFilter),
     };
   }
 
@@ -358,7 +360,13 @@ export class KnowledgeGraphProvider
   }
 
   // Method to add a new edge
-  async addEdge(sourceId: string, targetId: string, type: string, properties?: Record<string, unknown>, weight?: number): Promise<void> {
+  async addEdge(
+    sourceId: string,
+    targetId: string,
+    type: string,
+    properties?: Record<string, unknown>,
+    weight?: number
+  ): Promise<void> {
     try {
       if (!this.db) {
         throw new Error('Database not initialized');
@@ -370,7 +378,7 @@ export class KnowledgeGraphProvider
         targetId,
         type,
         properties,
-        weight
+        weight,
       });
 
       const newEdge = new KnowledgeGraphEdge(
@@ -391,7 +399,7 @@ export class KnowledgeGraphProvider
 
   // Getter methods for external access to data
   getNodes(): Node[] {
-    return this.nodes.map(node => ({
+    return this.nodes.map((node) => ({
       id: node.id,
       type: node.type,
       label: node.label,

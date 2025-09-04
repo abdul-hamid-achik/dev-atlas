@@ -166,7 +166,13 @@ export async function createEdgeCommand() {
     });
 
     // Create the edge using the provider
-    await knowledgeGraphProvider.addEdge(edgeData.sourceId, edgeData.targetId, edgeData.type, edgeData.properties, edgeData.weight);
+    await knowledgeGraphProvider.addEdge(
+      edgeData.sourceId,
+      edgeData.targetId,
+      edgeData.type,
+      edgeData.properties,
+      edgeData.weight
+    );
     log(`Edge created: ${edgeData.sourceId} -> ${edgeData.targetId} (${edgeData.type})`);
   } catch (error) {
     if (error instanceof z.ZodError) {
