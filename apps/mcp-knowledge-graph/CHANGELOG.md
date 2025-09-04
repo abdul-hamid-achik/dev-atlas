@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/abdul-hamid-achik/dev-atlas/compare/v2.0.1...v2.0.2) (2025-09-04)
+
+
+### Bug Fixes
+
+* resolve VS Code extension release issues ([d866284](https://github.com/abdul-hamid-achik/dev-atlas/commit/d86628408ca2133a6d277bcf59036af3e197732a))
+
 ## [2.0.1](https://github.com/abdul-hamid-achik/dev-atlas/compare/v2.0.0...v2.0.1) (2025-09-04)
 
 
