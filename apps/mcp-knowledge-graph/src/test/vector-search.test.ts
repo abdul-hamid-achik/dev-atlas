@@ -63,7 +63,7 @@ describe('Vector Search Functionality', () => {
         properties: { description: 'Test node for embedding generation' },
       });
 
-      await testDb.generateNodeEmbedding(node.id, 'simple');
+      await testDb.generateNodeEmbedding(node.id, { model: 'simple' });
 
       const updatedNode = await testDb.getNode(node.id);
       expect(updatedNode).toBeDefined();
@@ -84,7 +84,7 @@ describe('Vector Search Functionality', () => {
 
     it('should handle embedding generation errors gracefully', async () => {
       // Test with invalid node ID
-      await expect(testDb.generateNodeEmbedding('invalid-id', 'simple')).rejects.toThrow(
+      await expect(testDb.generateNodeEmbedding('invalid-id', { model: 'simple' })).rejects.toThrow(
         'Node invalid-id not found'
       );
     });
@@ -257,8 +257,8 @@ describe('Vector Search Functionality', () => {
         properties: { content: 'identical content for testing' },
       });
 
-      await testDb.generateNodeEmbedding(node1.id, 'simple');
-      await testDb.generateNodeEmbedding(node2.id, 'simple');
+      await testDb.generateNodeEmbedding(node1.id, { model: 'simple' });
+      await testDb.generateNodeEmbedding(node2.id, { model: 'simple' });
 
       // For testing purposes, we'll create a method to access similarity calculation
       // In a real scenario, this would be tested through the hybrid search or vector search
@@ -289,8 +289,8 @@ describe('Vector Search Functionality', () => {
         properties: { content: 'cooking recipes kitchen utensils' },
       });
 
-      await testDb.generateNodeEmbedding(node1.id, 'simple');
-      await testDb.generateNodeEmbedding(node2.id, 'simple');
+      await testDb.generateNodeEmbedding(node1.id, { model: 'simple' });
+      await testDb.generateNodeEmbedding(node2.id, { model: 'simple' });
 
       const mlResults = await testDb.vectorSearchNodes('artificial intelligence', {
         limit: 2,
@@ -325,7 +325,9 @@ describe('Vector Search Functionality', () => {
       });
 
       // Should not throw when generating embeddings for empty content
-      await expect(testDb.generateNodeEmbedding(emptyNode.id, 'simple')).resolves.not.toThrow();
+      await expect(
+        testDb.generateNodeEmbedding(emptyNode.id, { model: 'simple' })
+      ).resolves.not.toThrow();
     });
 
     it('should handle invalid embedding model', async () => {
@@ -334,9 +336,9 @@ describe('Vector Search Functionality', () => {
         label: 'ModelTest',
       });
 
-      await expect(testDb.generateNodeEmbedding(node.id, 'invalid-model')).rejects.toThrow(
-        'Embedding model invalid-model not supported'
-      );
+      await expect(
+        testDb.generateNodeEmbedding(node.id, { model: 'invalid-model' })
+      ).rejects.toThrow('Embedding model invalid-model not supported');
     });
 
     it('should handle vector search with no embeddings in database', async () => {

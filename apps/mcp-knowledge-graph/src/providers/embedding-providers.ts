@@ -208,9 +208,10 @@ export class SimpleEmbeddingProvider implements EmbeddingProvider {
   }
 
   async generateEmbedding(text: string, model = 'simple-js'): Promise<number[]> {
-    // Accept both 'simple-js' and legacy 'simple' for backward compatibility
-    if (model !== 'simple-js' && model !== 'simple') {
-      throw new Error(`Simple provider only supports 'simple-js' or 'simple' model, got: ${model}`);
+    // Validate model - only accept supported models
+    const supportedModels = this.getSupportedModels();
+    if (!supportedModels.includes(model) && model !== 'simple') {
+      throw new Error(`Embedding model ${model} not supported`);
     }
 
     return this.generateSimpleEmbedding(text);
@@ -324,13 +325,13 @@ export class EmbeddingProviderFactory {
       return this.currentProvider;
     }
 
-    // In test environment, always use simple provider for predictable behavior
-    if (process.env.NODE_ENV === 'test') {
+    // In test environment, use simple provider only if no specific provider is configured
+    if (process.env.NODE_ENV === 'test' && !process.env.EMBEDDING_PROVIDER) {
       const simpleProvider = this.providers.get('simple');
       if (!simpleProvider) {
         throw new Error('Simple provider not available in test environment');
       }
-      console.error('[EmbeddingFactory] Using simple provider for tests');
+      console.error('[EmbeddingFactory] Using simple provider for tests (no provider specified)');
       this.currentProvider = simpleProvider;
       return simpleProvider;
     }

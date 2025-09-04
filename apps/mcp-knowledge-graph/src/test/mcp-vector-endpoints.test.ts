@@ -149,7 +149,7 @@ describe('MCP Vector Search Endpoints', () => {
       expect(nodes.length).toBeGreaterThan(0);
 
       // Generate embedding for first node
-      await testDb.generateNodeEmbedding(nodes[0].id, 'simple');
+      await testDb.generateNodeEmbedding(nodes[0].id, { model: 'simple' });
 
       // Verify it was generated (we'd need to add a method to check this)
       const results = await testDb.vectorSearchNodes('authentication', {
@@ -162,17 +162,17 @@ describe('MCP Vector Search Endpoints', () => {
     });
 
     it('should handle non-existent node IDs gracefully', async () => {
-      await expect(testDb.generateNodeEmbedding('non-existent-id', 'simple')).rejects.toThrow(
-        'Node non-existent-id not found'
-      );
+      await expect(
+        testDb.generateNodeEmbedding('non-existent-id', { model: 'simple' })
+      ).rejects.toThrow('Node non-existent-id not found');
     });
 
     it('should handle invalid model names', async () => {
       const nodes = await testDb.queryNodes({ limit: 1 });
       if (nodes.length > 0) {
-        await expect(testDb.generateNodeEmbedding(nodes[0].id, 'invalid-model')).rejects.toThrow(
-          'Embedding model invalid-model not supported'
-        );
+        await expect(
+          testDb.generateNodeEmbedding(nodes[0].id, { model: 'invalid-model' })
+        ).rejects.toThrow('Embedding model invalid-model not supported');
       }
     });
   });
@@ -532,15 +532,17 @@ describe('MCP Vector Search Endpoints', () => {
 
   describe('Error Handling', () => {
     it('should handle invalid node IDs in embedding generation', async () => {
-      await expect(testDb.generateNodeEmbedding('invalid-id', 'simple')).rejects.toThrow();
+      await expect(
+        testDb.generateNodeEmbedding('invalid-id', { model: 'simple' })
+      ).rejects.toThrow();
     });
 
     it('should handle invalid embedding models', async () => {
       const nodes = await testDb.queryNodes({ limit: 1 });
       if (nodes.length > 0) {
-        await expect(testDb.generateNodeEmbedding(nodes[0].id, 'invalid-model')).rejects.toThrow(
-          'Embedding model invalid-model not supported'
-        );
+        await expect(
+          testDb.generateNodeEmbedding(nodes[0].id, { model: 'invalid-model' })
+        ).rejects.toThrow('Embedding model invalid-model not supported');
       }
     });
 
@@ -627,7 +629,7 @@ describe('MCP Vector Search Endpoints', () => {
         },
       });
 
-      await testDb.generateNodeEmbedding(complexNode.id, 'simple');
+      await testDb.generateNodeEmbedding(complexNode.id, { model: 'simple' });
 
       const results = await testDb.vectorSearchNodes('data processing validation', {
         limit: 5,
