@@ -2,19 +2,19 @@ import * as vscode from 'vscode';
 import { createEdgeCommand } from './commands/createEdge';
 import { createNodeCommand } from './commands/createNode';
 import {
-  advancedSearchCommand,
-  searchKnowledgeGraphCommand,
-  vectorSearchCommand,
-} from './commands/searchKnowledgeGraph';
-import {
   addToKnowledgeGraphCommand,
   createRelationshipCommand,
   showFileInfoCommand,
 } from './commands/fileExplorerIntegration';
+import {
+  advancedSearchCommand,
+  searchKnowledgeGraphCommand,
+  vectorSearchCommand,
+} from './commands/searchKnowledgeGraph';
+import { FileSystemWatcher } from './services/FileSystemWatcher';
+import { WorkspaceScanner } from './services/WorkspaceScanner';
 import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
-import { WorkspaceScanner } from './services/WorkspaceScanner';
-import { FileSystemWatcher } from './services/FileSystemWatcher';
 
 /**
  * Global provider interface for commands to access the knowledge graph provider.
@@ -246,11 +246,14 @@ export function activate(context: vscode.ExtensionContext) {
 
       vscode.window.showInformationMessage(
         `Workspace scan completed: ${results.filesScanned} files scanned, ` +
-        `${results.nodesCreated} nodes created, ${results.edgesCreated} edges created`
+          `${results.nodesCreated} nodes created, ${results.edgesCreated} edges created`
       );
 
       if (results.errors.length > 0) {
-        log(`Scan completed with ${results.errors.length} errors: ${results.errors.join(', ')}`, 'warn');
+        log(
+          `Scan completed with ${results.errors.length} errors: ${results.errors.join(', ')}`,
+          'warn'
+        );
       }
     } catch (error) {
       vscode.window.showErrorMessage(`Workspace scan failed: ${error}`);
@@ -258,22 +261,25 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  const startFileWatchingCmd = vscode.commands.registerCommand('dev-atlas.startFileWatching', async () => {
-    log('Start file watching command triggered');
+  const startFileWatchingCmd = vscode.commands.registerCommand(
+    'dev-atlas.startFileWatching',
+    async () => {
+      log('Start file watching command triggered');
 
-    if (!fileWatcher) {
-      vscode.window.showErrorMessage('File system watcher not available');
-      return;
-    }
+      if (!fileWatcher) {
+        vscode.window.showErrorMessage('File system watcher not available');
+        return;
+      }
 
-    try {
-      await fileWatcher.startWatching();
-      vscode.window.showInformationMessage('File system watching started');
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to start file watching: ${error}`);
-      log(`File watching error: ${error}`, 'error');
+      try {
+        await fileWatcher.startWatching();
+        vscode.window.showInformationMessage('File system watching started');
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to start file watching: ${error}`);
+        log(`File watching error: ${error}`, 'error');
+      }
     }
-  });
+  );
 
   const stopFileWatchingCmd = vscode.commands.registerCommand('dev-atlas.stopFileWatching', () => {
     log('Stop file watching command triggered');

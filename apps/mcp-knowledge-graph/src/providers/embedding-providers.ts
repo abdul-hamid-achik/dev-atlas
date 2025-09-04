@@ -110,7 +110,8 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
         if (attempt === this.maxRetries) {
           throw new Error(
-            `Failed to generate Ollama embedding after ${this.maxRetries} attempts: ${error instanceof Error ? error.message : String(error)
+            `Failed to generate Ollama embedding after ${this.maxRetries} attempts: ${
+              error instanceof Error ? error.message : String(error)
             }`
           );
         }
@@ -333,7 +334,9 @@ export class EmbeddingProviderFactory {
       if (!simpleProvider) {
         throw new Error('Simple provider not available in test environment');
       }
-      console.error('[EmbeddingFactory] Using simple provider for tests/CI (no provider specified)');
+      console.error(
+        '[EmbeddingFactory] Using simple provider for tests/CI (no provider specified)'
+      );
       this.currentProvider = simpleProvider;
       return simpleProvider;
     }
@@ -357,9 +360,8 @@ export class EmbeddingProviderFactory {
             console.error(`[EmbeddingFactory] Using provider: ${provider.name}`);
             this.currentProvider = provider;
             return provider;
-          } else {
-            console.error(`[EmbeddingFactory] Provider ${providerName} not available`);
           }
+          console.error(`[EmbeddingFactory] Provider ${providerName} not available`);
         } catch (error) {
           console.error(
             `[EmbeddingFactory] Provider ${providerName} failed availability check:`,
@@ -368,8 +370,9 @@ export class EmbeddingProviderFactory {
 
           // In CI/test, don't retry external providers for too long
           if (isTestOrCI && providerName !== 'simple') {
-            console.error(`[EmbeddingFactory] Skipping ${providerName} in CI environment due to failure`);
-            continue;
+            console.error(
+              `[EmbeddingFactory] Skipping ${providerName} in CI environment due to failure`
+            );
           }
         }
       }
@@ -381,7 +384,9 @@ export class EmbeddingProviderFactory {
       throw new Error('No embedding providers available - simple provider not found');
     }
 
-    const fallbackReason = isTestOrCI ? 'CI/test environment fallback' : 'all other providers failed';
+    const fallbackReason = isTestOrCI
+      ? 'CI/test environment fallback'
+      : 'all other providers failed';
     console.error(`[EmbeddingFactory] Using simple provider (${fallbackReason})`);
     this.currentProvider = simpleProvider;
     return simpleProvider;
@@ -396,12 +401,15 @@ export class EmbeddingProviderFactory {
     );
   }
 
-  private async checkProviderAvailability(provider: EmbeddingProvider, timeoutMs: number): Promise<boolean> {
+  private async checkProviderAvailability(
+    provider: EmbeddingProvider,
+    timeoutMs: number
+  ): Promise<boolean> {
     return Promise.race([
       provider.isAvailable(),
       new Promise<boolean>((_, reject) =>
         setTimeout(() => reject(new Error('Provider availability check timed out')), timeoutMs)
-      )
+      ),
     ]);
   }
 
