@@ -167,7 +167,7 @@ export async function createRelationshipCommand(uri?: vscode.Uri) {
       .filter((node: Node) => node.id !== sourceNode.id)
       .map((node: Node) => ({
         label: `${node.label} (${node.type})`,
-        description: node.properties?.path || '',
+        description: (node.properties?.path as string) || '',
         node,
       }));
 

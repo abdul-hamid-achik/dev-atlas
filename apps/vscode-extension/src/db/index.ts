@@ -341,14 +341,6 @@ export class KnowledgeGraphDB {
     }
   }
 
-  close() {
-    try {
-      this.sqlite.close();
-      log('Database connection closed');
-    } catch (error) {
-      log(`Failed to close database: ${error}`, 'error');
-    }
-  }
 
   // ========== VECTOR SEARCH FALLBACK METHODS ==========
   // These provide compatibility with the enhanced MCP features without requiring the full MCP server
@@ -639,6 +631,36 @@ export class KnowledgeGraphDB {
     } catch (error) {
       log(`Failed to delete node: ${error}`, 'error');
       throw error;
+    }
+  }
+
+  /**
+   * Returns the database instance (self-reference for compatibility)
+   */
+  getDatabase(): KnowledgeGraphDB {
+    return this;
+  }
+
+  /**
+   * Refresh method for compatibility with provider expectations
+   */
+  async refresh(): Promise<void> {
+    // This method exists for interface compatibility
+    // The actual refresh logic is handled by the provider
+    log('Database refresh requested');
+  }
+
+  /**
+   * Close the database connection
+   */
+  close(): void {
+    try {
+      if (this.sqlite) {
+        this.sqlite.close();
+        log('Database connection closed');
+      }
+    } catch (error) {
+      log(`Failed to close database: ${error}`, 'error');
     }
   }
 }
