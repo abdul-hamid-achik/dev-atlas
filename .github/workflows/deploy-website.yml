@@ -25,8 +25,20 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-node-22-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-22-
+            ${{ runner.os }}-node-
+
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-package-lock --prefer-offline
 
       - name: Setup Turbo Cache
         uses: actions/cache@v3
