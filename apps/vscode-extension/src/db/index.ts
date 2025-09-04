@@ -341,7 +341,6 @@ export class KnowledgeGraphDB {
     }
   }
 
-
   // ========== VECTOR SEARCH FALLBACK METHODS ==========
   // These provide compatibility with the enhanced MCP features without requiring the full MCP server
 
