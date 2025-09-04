@@ -8,61 +8,116 @@ on:
     branches:
       - main
 
+env:
+  NODE_VERSION: "22"
+  CACHE_DEPENDENCY_PATH: "**/package.json"
+
 jobs:
   test:
     name: Test & Build (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
+      fail-fast: false # Don't cancel other jobs if one fails
       matrix:
         node-version: [18, 20, 22]
     services:
       ollama:
-        image: ollama/ollama:latest
+        image: ollama/ollama:0.1.48 # Pin to specific version instead of latest
         ports:
           - 11434:11434
         options: >-
-          --health-cmd "curl -f http://localhost:11434/api/tags || exit 1"
-          --health-interval 15s
-          --health-timeout 10s
-          --health-retries 10
+          --health-cmd "curl -f http://localhost:11434/api/tags"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          --health-start-period 30s
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
-      - name: Cache node_modules
-        uses: actions/cache@v3
+      - name: Cache dependencies
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        id: cache-deps
         with:
           path: |
             node_modules
             apps/*/node_modules
             packages/*/node_modules
             ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
+          key: deps-${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles(env.CACHE_DEPENDENCY_PATH) }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ matrix.node-version }}-
-            ${{ runner.os }}-node-
+            deps-${{ runner.os }}-node-${{ matrix.node-version }}-
+            deps-${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm install --no-package-lock --prefer-offline
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: npm ci --prefer-offline --no-audit
 
       - name: Setup Ollama embedding model
+        timeout-minutes: 8
         run: |
-          # Wait for Ollama to be ready with more patience
-          timeout 120 bash -c 'until curl -f http://localhost:11434/api/tags; do sleep 3; done'
-          # Pull a lightweight embedding model for testing
-          curl -X POST http://localhost:11434/api/pull -d '{"name": "all-minilm:latest"}' -H "Content-Type: application/json"
-          # Wait for model to be ready with more patience
-          timeout 300 bash -c 'until curl -s http://localhost:11434/api/tags | grep -q "all-minilm"; do sleep 10; done'
+          echo "Setting up Ollama with better error handling..."
+          
+          # Function to check Ollama health
+          check_ollama_health() {
+            for i in {1..20}; do
+              if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
+                echo "Ollama is healthy"
+                return 0
+              fi
+              echo "Waiting for Ollama... attempt $i/20"
+              sleep 5
+            done
+            echo "Ollama failed to become healthy"
+            return 1
+          }
+          
+          # Wait for Ollama to be ready
+          if ! check_ollama_health; then
+            echo "::error::Ollama service failed to start properly"
+            curl -v http://localhost:11434/api/tags || true
+            exit 1
+          fi
+          
+          # Pull model with timeout and retries
+          echo "Pulling all-minilm model..."
+          if ! timeout 300 curl -X POST http://localhost:11434/api/pull \
+            -d '{"name": "all-minilm:latest"}' \
+            -H "Content-Type: application/json"; then
+            echo "::error::Failed to pull model"
+            exit 1
+          fi
+          
+          # Verify model is available
+          echo "Verifying model availability..."
+          for i in {1..30}; do
+            if curl -s http://localhost:11434/api/tags | grep -q "all-minilm"; then
+              echo "Model successfully loaded"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "::error::Model failed to load after 5 minutes"
+              curl -s http://localhost:11434/api/tags
+              exit 1
+            fi
+            echo "Waiting for model to load... attempt $i/30"
+            sleep 10
+          done
 
       - name: Lint
         run: npm run lint
 
       - name: Test
+        timeout-minutes: 15
         run: npm run test
         env:
           EMBEDDING_PROVIDER: ollama
@@ -76,60 +131,87 @@ jobs:
     name: Release
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       id-token: write
       packages: write
+      actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
 
-      - name: Cache node_modules
-        uses: actions/cache@v3
+      - name: Cache dependencies
+        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
+        id: cache-deps-release
         with:
           path: |
             node_modules
             apps/*/node_modules
             packages/*/node_modules
             ~/.npm
-          key: ${{ runner.os }}-node-22-${{ hashFiles('**/package.json') }}
+          key: deps-${{ runner.os }}-node-${{ env.NODE_VERSION }}-${{ hashFiles(env.CACHE_DEPENDENCY_PATH) }}
           restore-keys: |
-            ${{ runner.os }}-node-22-
-            ${{ runner.os }}-node-
+            deps-${{ runner.os }}-node-${{ env.NODE_VERSION }}-
+            deps-${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm install --no-package-lock --prefer-offline
+        if: steps.cache-deps-release.outputs.cache-hit != 'true'
+        run: npm ci --prefer-offline --no-audit
 
       - name: Build all packages
         run: npm run build
 
+      - name: Verify build outputs
+        run: |
+          echo "Verifying build outputs..."
+          ls -la apps/mcp-knowledge-graph/dist/
+          ls -la apps/vscode-extension/dist/
+
       - name: Release MCP Package
+        timeout-minutes: 5
         run: |
           cd apps/mcp-knowledge-graph
-          npx semantic-release
+          npx semantic-release@22.0.12
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Package VS Code Extension
+        timeout-minutes: 3
         run: |
           cd apps/vscode-extension
           npm run package
+          echo "Extension packaged successfully:"
+          ls -la *.vsix
 
       - name: Release VS Code Extension
+        timeout-minutes: 5
         run: |
           cd apps/vscode-extension
-          npx semantic-release
+          npx semantic-release@22.0.12
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        if: always()
+        with:
+          name: release-artifacts-${{ github.run_id }}
+          path: |
+            apps/vscode-extension/*.vsix
+            apps/mcp-knowledge-graph/dist/**/*
+          retention-days: 30

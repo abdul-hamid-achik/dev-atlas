@@ -28,7 +28,13 @@
     "onCommand:dev-atlas.advancedSearch",
     "onCommand:dev-atlas.vectorSearch",
     "onCommand:dev-atlas.filterTreeView",
-    "onCommand:dev-atlas.clearTreeFilters"
+    "onCommand:dev-atlas.clearTreeFilters",
+    "onCommand:dev-atlas.addToKnowledgeGraph",
+    "onCommand:dev-atlas.createRelationship",
+    "onCommand:dev-atlas.showFileInfo",
+    "onCommand:dev-atlas.scanWorkspace",
+    "onCommand:dev-atlas.startFileWatching",
+    "onCommand:dev-atlas.stopFileWatching"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -86,6 +92,42 @@
         "title": "Clear Tree Filters",
         "category": "Dev Atlas",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "dev-atlas.addToKnowledgeGraph",
+        "title": "Add to Knowledge Graph",
+        "category": "Dev Atlas",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dev-atlas.createRelationship",
+        "title": "Create Relationship",
+        "category": "Dev Atlas",
+        "icon": "$(link)"
+      },
+      {
+        "command": "dev-atlas.showFileInfo",
+        "title": "Show Knowledge Graph Info",
+        "category": "Dev Atlas",
+        "icon": "$(info)"
+      },
+      {
+        "command": "dev-atlas.scanWorkspace",
+        "title": "Scan Workspace",
+        "category": "Dev Atlas",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "dev-atlas.startFileWatching",
+        "title": "Start File Watching",
+        "category": "Dev Atlas",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "dev-atlas.stopFileWatching",
+        "title": "Stop File Watching",
+        "category": "Dev Atlas",
+        "icon": "$(eye-closed)"
       }
     ],
     "views": {
@@ -159,6 +201,57 @@
           "command": "dev-atlas.clearTreeFilters",
           "when": "view == dev-atlas-knowledge-graph",
           "group": "inline@2"
+        },
+        {
+          "command": "dev-atlas.scanWorkspace",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@7"
+        },
+        {
+          "command": "dev-atlas.startFileWatching",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@8"
+        },
+        {
+          "command": "dev-atlas.stopFileWatching",
+          "when": "view == dev-atlas-knowledge-graph",
+          "group": "navigation@9"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "dev-atlas.addToKnowledgeGraph",
+          "group": "devAtlas@1",
+          "when": "!explorerResourceIsFolder"
+        },
+        {
+          "command": "dev-atlas.addToKnowledgeGraph",
+          "group": "devAtlas@1",
+          "when": "explorerResourceIsFolder"
+        },
+        {
+          "command": "dev-atlas.createRelationship",
+          "group": "devAtlas@2",
+          "when": "!explorerResourceIsFolder"
+        },
+        {
+          "command": "dev-atlas.showFileInfo",
+          "group": "devAtlas@3",
+          "when": "!explorerResourceIsFolder"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "dev-atlas.addToKnowledgeGraph",
+          "group": "devAtlas@1"
+        },
+        {
+          "command": "dev-atlas.createRelationship",
+          "group": "devAtlas@2"
+        },
+        {
+          "command": "dev-atlas.showFileInfo",
+          "group": "devAtlas@3"
         }
       ],
       "commandPalette": [
@@ -197,6 +290,30 @@
         {
           "command": "dev-atlas.clearTreeFilters",
           "title": "Dev Atlas: Clear Tree Filters"
+        },
+        {
+          "command": "dev-atlas.addToKnowledgeGraph",
+          "title": "Dev Atlas: Add to Knowledge Graph"
+        },
+        {
+          "command": "dev-atlas.createRelationship",
+          "title": "Dev Atlas: Create Relationship"
+        },
+        {
+          "command": "dev-atlas.showFileInfo",
+          "title": "Dev Atlas: Show Knowledge Graph Info"
+        },
+        {
+          "command": "dev-atlas.scanWorkspace",
+          "title": "Dev Atlas: Scan Workspace"
+        },
+        {
+          "command": "dev-atlas.startFileWatching",
+          "title": "Dev Atlas: Start File Watching"
+        },
+        {
+          "command": "dev-atlas.stopFileWatching",
+          "title": "Dev Atlas: Stop File Watching"
         }
       ]
     },

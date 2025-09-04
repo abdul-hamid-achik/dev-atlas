@@ -570,4 +570,75 @@ export class KnowledgeGraphDB {
 
     return 0;
   }
+
+  async updateNode(id: string, updates: Partial<CreateNode>): Promise<Node> {
+    try {
+      // First get the existing node
+      const existingNode = await this.getNode(id);
+      if (!existingNode) {
+        throw new Error(`Node with id ${id} not found`);
+      }
+
+      // Merge properties
+      const updatedProperties = {
+        ...existingNode.properties,
+        ...updates.properties,
+      };
+
+      // Prepare update statement
+      const updateData = {
+        type: updates.type || existingNode.type,
+        label: updates.label || existingNode.label,
+        properties: JSON.stringify(updatedProperties),
+        updated_at: Math.floor(Date.now() / 1000),
+      };
+
+      const stmt = this.sqlite.prepare(`
+        UPDATE nodes 
+        SET type = ?, label = ?, properties = ?, updated_at = ?
+        WHERE id = ?
+      `);
+
+      stmt.run(updateData.type, updateData.label, updateData.properties, updateData.updated_at, id);
+
+      // Return the updated node
+      const updatedNode = await this.getNode(id);
+      if (!updatedNode) {
+        throw new Error(`Failed to retrieve updated node ${id}`);
+      }
+
+      log(`Updated node: ${updatedNode.label} (${updatedNode.type})`);
+      return updatedNode;
+    } catch (error) {
+      log(`Failed to update node: ${error}`, 'error');
+      throw error;
+    }
+  }
+
+  async deleteNode(id: string): Promise<void> {
+    try {
+      // First, delete all edges connected to this node
+      const deleteEdgesStmt = this.sqlite.prepare(`
+        DELETE FROM edges 
+        WHERE source_id = ? OR target_id = ?
+      `);
+      deleteEdgesStmt.run(id, id);
+
+      // Then delete the node itself
+      const deleteNodeStmt = this.sqlite.prepare(`
+        DELETE FROM nodes 
+        WHERE id = ?
+      `);
+      const result = deleteNodeStmt.run(id);
+
+      if (result.changes === 0) {
+        throw new Error(`Node with id ${id} not found`);
+      }
+
+      log(`Deleted node: ${id} and its connected edges`);
+    } catch (error) {
+      log(`Failed to delete node: ${error}`, 'error');
+      throw error;
+    }
+  }
 }

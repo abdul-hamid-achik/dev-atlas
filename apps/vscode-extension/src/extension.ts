@@ -6,8 +6,15 @@ import {
   searchKnowledgeGraphCommand,
   vectorSearchCommand,
 } from './commands/searchKnowledgeGraph';
+import {
+  addToKnowledgeGraphCommand,
+  createRelationshipCommand,
+  showFileInfoCommand,
+} from './commands/fileExplorerIntegration';
 import { GraphVisualizerPanel } from './views/GraphVisualizerPanel';
 import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
+import { WorkspaceScanner } from './services/WorkspaceScanner';
+import { FileSystemWatcher } from './services/FileSystemWatcher';
 
 /**
  * Global provider interface for commands to access the knowledge graph provider.
@@ -15,6 +22,8 @@ import { KnowledgeGraphProvider } from './views/KnowledgeGraphProvider';
  */
 type GlobalWithProvider = typeof globalThis & {
   devAtlasKnowledgeGraphProvider?: KnowledgeGraphProvider;
+  devAtlasWorkspaceScanner?: WorkspaceScanner;
+  devAtlasFileSystemWatcher?: FileSystemWatcher;
 };
 
 /** VS Code output channel for logging Dev Atlas extension messages */
@@ -62,10 +71,22 @@ export function activate(context: vscode.ExtensionContext) {
   const provider = new KnowledgeGraphProvider();
   vscode.window.registerTreeDataProvider('dev-atlas-knowledge-graph', provider);
 
-  // Store provider globally for commands to access
-  (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider = provider;
+  // Initialize workspace scanner and file system watcher
+  const db = provider.getDatabase();
+  let scanner: WorkspaceScanner | null = null;
+  let fileWatcher: FileSystemWatcher | null = null;
 
-  log('Knowledge graph provider registered');
+  if (db) {
+    scanner = new WorkspaceScanner(db);
+    fileWatcher = new FileSystemWatcher(scanner);
+  }
+
+  // Store services globally for commands to access
+  (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider = provider;
+  (global as GlobalWithProvider).devAtlasWorkspaceScanner = scanner || undefined;
+  (global as GlobalWithProvider).devAtlasFileSystemWatcher = fileWatcher || undefined;
+
+  log('Knowledge graph provider and services registered');
 
   // Register commands
   const openKnowledgeGraphCommand = vscode.commands.registerCommand(
@@ -182,6 +203,99 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('Tree view filters cleared');
   });
 
+  // File Explorer Integration Commands
+  const addToKnowledgeGraphCmd = vscode.commands.registerCommand(
+    'dev-atlas.addToKnowledgeGraph',
+    (uri?: vscode.Uri) => {
+      log('Add to knowledge graph command triggered');
+      addToKnowledgeGraphCommand(uri);
+    }
+  );
+
+  const createRelationshipCmd = vscode.commands.registerCommand(
+    'dev-atlas.createRelationship',
+    (uri?: vscode.Uri) => {
+      log('Create relationship command triggered');
+      createRelationshipCommand(uri);
+    }
+  );
+
+  const showFileInfoCmd = vscode.commands.registerCommand(
+    'dev-atlas.showFileInfo',
+    (uri?: vscode.Uri) => {
+      log('Show file info command triggered');
+      showFileInfoCommand(uri);
+    }
+  );
+
+  // Workspace Scanning Commands
+  const scanWorkspaceCmd = vscode.commands.registerCommand('dev-atlas.scanWorkspace', async () => {
+    log('Scan workspace command triggered');
+    
+    if (!scanner) {
+      vscode.window.showErrorMessage('Workspace scanner not available');
+      return;
+    }
+
+    vscode.window.showInformationMessage('Scanning workspace... This may take a moment.');
+    
+    try {
+      const results = await scanner.scanWorkspace();
+      
+      await provider.refresh();
+      
+      vscode.window.showInformationMessage(
+        `Workspace scan completed: ${results.filesScanned} files scanned, ` +
+        `${results.nodesCreated} nodes created, ${results.edgesCreated} edges created`
+      );
+      
+      if (results.errors.length > 0) {
+        log(`Scan completed with ${results.errors.length} errors: ${results.errors.join(', ')}`, 'warn');
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Workspace scan failed: ${error}`);
+      log(`Workspace scan error: ${error}`, 'error');
+    }
+  });
+
+  const startFileWatchingCmd = vscode.commands.registerCommand('dev-atlas.startFileWatching', async () => {
+    log('Start file watching command triggered');
+    
+    if (!fileWatcher) {
+      vscode.window.showErrorMessage('File system watcher not available');
+      return;
+    }
+
+    try {
+      await fileWatcher.startWatching();
+      vscode.window.showInformationMessage('File system watching started');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to start file watching: ${error}`);
+      log(`File watching error: ${error}`, 'error');
+    }
+  });
+
+  const stopFileWatchingCmd = vscode.commands.registerCommand('dev-atlas.stopFileWatching', () => {
+    log('Stop file watching command triggered');
+    
+    if (!fileWatcher) {
+      vscode.window.showErrorMessage('File system watcher not available');
+      return;
+    }
+
+    fileWatcher.stopWatching();
+    vscode.window.showInformationMessage('File system watching stopped');
+  });
+
+  // Internal refresh command for file watcher
+  const refreshKnowledgeGraphCmd = vscode.commands.registerCommand(
+    'dev-atlas.refreshKnowledgeGraph',
+    async () => {
+      log('Refresh knowledge graph command triggered');
+      await provider.refresh();
+    }
+  );
+
   // Add commands to context
   context.subscriptions.push(
     openKnowledgeGraphCommand,
@@ -193,6 +307,13 @@ export function activate(context: vscode.ExtensionContext) {
     vectorSearchCmd,
     filterTreeViewCmd,
     clearTreeFiltersCmd,
+    addToKnowledgeGraphCmd,
+    createRelationshipCmd,
+    showFileInfoCmd,
+    scanWorkspaceCmd,
+    startFileWatchingCmd,
+    stopFileWatchingCmd,
+    refreshKnowledgeGraphCmd,
     outputChannel
   );
   log('Commands registered successfully');
@@ -202,6 +323,13 @@ export function activate(context: vscode.ExtensionContext) {
     log('Configuration changed, refreshing provider');
     provider.refresh();
   });
+
+  // Start file watching automatically if enabled
+  if (fileWatcher) {
+    fileWatcher.startWatching().catch((error) => {
+      log(`Failed to start automatic file watching: ${error}`, 'warn');
+    });
+  }
 
   log('Dev Atlas extension activation completed');
 }
@@ -215,11 +343,21 @@ export function deactivate() {
 
   // Clean up resources
   const provider = (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider;
+  const fileWatcher = (global as GlobalWithProvider).devAtlasFileSystemWatcher;
+
+  if (fileWatcher) {
+    fileWatcher.dispose();
+    log('File system watcher disposed');
+  }
+
   if (provider?.dispose) {
     provider.dispose();
     log('Provider disposed');
   }
 
   (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider = undefined;
+  (global as GlobalWithProvider).devAtlasWorkspaceScanner = undefined;
+  (global as GlobalWithProvider).devAtlasFileSystemWatcher = undefined;
+  
   console.log('Dev Atlas extension is now deactivated!');
 }
