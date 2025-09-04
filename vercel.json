@@ -1,6 +1,6 @@
 {
   "buildCommand": "npx turbo run build --filter=dev-atlas-website",
   "outputDirectory": "apps/website/.next",
-  "installCommand": "npm install",
+  "installCommand": "npm install --no-package-lock --prefer-offline",
   "framework": "nextjs"
 }
