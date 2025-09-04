@@ -1,3 +1,11 @@
+## [2.0.1](https://github.com/abdul-hamid-achik/dev-atlas/compare/v2.0.0...v2.0.1) (2025-09-04)
+
+
+### Bug Fixes
+
+* apply code formatting fixes for website ([637cdb5](https://github.com/abdul-hamid-achik/dev-atlas/commit/637cdb5aa39de415e8d604ba0435f5b15767d074))
+* update knowledge graph directory path in website configuration ([de229a9](https://github.com/abdul-hamid-achik/dev-atlas/commit/de229a9ec80c57546c2181b75fdc96f228ea34e5))
+
 # [2.0.0](https://github.com/abdul-hamid-achik/dev-atlas/compare/v1.0.0...v2.0.0) (2025-09-04)
 
 
