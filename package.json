@@ -4,8 +4,7 @@
   "private": true,
   "description": "Dev Atlas - Monorepo with MCP Knowledge Graph and VS Code Extension",
   "workspaces": [
-    "apps/mcp-knowledge-graph",
-    "apps/vscode-extension",
+    "apps/*",
     "packages/*"
   ],
   "scripts": {

@@ -1,21 +1,32 @@
-import Link from 'next/link';
-
 export default function NotFound() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center text-center">
-      <div className="space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">404</h1>
-        <h2 className="text-xl text-muted-foreground">Page Not Found</h2>
-        <p className="text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <Link 
-          href="/" 
-          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-        >
-          Go Home
-        </Link>
-      </div>
-    </div>
-  );
+    return (
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            textAlign: 'center',
+            padding: '20px'
+        }}>
+            <h1 style={{ fontSize: '3rem', marginBottom: '1rem' }}>404</h1>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Page Not Found</h2>
+            <p style={{ fontSize: '1rem', marginBottom: '2rem', color: '#666' }}>
+                The page you're looking for doesn't exist.
+            </p>
+            <a
+                href="/"
+                style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#0070f3',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '1rem'
+                }}
+            >
+                Go Home
+            </a>
+        </div>
+    );
 }

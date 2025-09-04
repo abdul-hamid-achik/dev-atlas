@@ -332,7 +332,7 @@ export default function HomePage() {
       "command": "npx",
       "args": ["dev-atlas-knowledge-graph"],
       "env": {
-        "GRAPH_DB_PATH": "./knowledge-graph.db"
+        "KNOWLEDGE_GRAPH_DIR": "./knowledge-graph.db"
       }
     }
   }

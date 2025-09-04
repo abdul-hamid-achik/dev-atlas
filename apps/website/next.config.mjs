@@ -1,16 +1,10 @@
+import nextra from 'nextra'
+
+const withNextra = nextra({})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
-  skipTrailingSlashRedirect: true,
-  trailingSlash: false,
-  // Skip generating static error pages during build
-  generateBuildId: () => 'build-id',
-  experimental: {
-    optimizeCss: false,
-  },
-  // Avoid static optimization issues
-  output: 'export',
-  distDir: 'out',
-};
+  reactStrictMode: true
+}
 
-export default nextConfig;
+export default withNextra(nextConfig)
