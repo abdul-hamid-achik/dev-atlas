@@ -48,7 +48,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline --no-audit
+        run: npm install --prefer-offline --no-audit
 
       - name: Lint
         run: npm run lint
@@ -102,7 +102,7 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache-deps-release.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline --no-audit
+        run: npm install --prefer-offline --no-audit
 
       - name: Build all packages
         run: npm run build
