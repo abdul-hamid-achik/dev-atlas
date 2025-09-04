@@ -1,3 +1,36 @@
+# [2.0.0](https://github.com/abdul-hamid-achik/dev-atlas/compare/v1.0.0...v2.0.0) (2025-09-04)
+
+
+### Bug Fixes
+
+* add missing database methods for VSCode extension ([bbc491d](https://github.com/abdul-hamid-achik/dev-atlas/commit/bbc491db3e310503f0720e67fba7a90e6f72e023))
+* improve Ollama service container reliability in CI ([dfc32a5](https://github.com/abdul-hamid-achik/dev-atlas/commit/dfc32a518930245300f2a4ff497256019f0dd291))
+* include package-lock.json for reproducible CI builds ([9bfe39a](https://github.com/abdul-hamid-achik/dev-atlas/commit/9bfe39aa36736c9a2cd41a48e0ac53c5b4db67a7))
+* remove automatic npm cache from setup-node action ([f77d8b2](https://github.com/abdul-hamid-achik/dev-atlas/commit/f77d8b25a3f37a0fa58cad668a2985bd59f1ac0c))
+* Remove sqlite-vec dependency that was causing build failures ([d07f9b5](https://github.com/abdul-hamid-achik/dev-atlas/commit/d07f9b558d2f52e289c9e2a4dd00245b11a84711))
+* resolve all linting errors in CI pipeline ([52811cc](https://github.com/abdul-hamid-achik/dev-atlas/commit/52811cce88d573e4898b7ce5f763ac8146d0b61a))
+* resolve final formatting issues for CI ([382a225](https://github.com/abdul-hamid-achik/dev-atlas/commit/382a225c2eafaf568c804af8f0b5619a735848b3))
+* resolve Node.js module compatibility and MCP configuration issues ([8a263b2](https://github.com/abdul-hamid-achik/dev-atlas/commit/8a263b25fcdd12d643eb7dc28a909e5ef88e9da2))
+* resolve Ollama container initialization failures in CI ([b0f2579](https://github.com/abdul-hamid-achik/dev-atlas/commit/b0f2579544423a292f9c709007877c28bab0b913))
+* sync package-lock.json and remove Node.js 18 from CI matrix ([00c4c23](https://github.com/abdul-hamid-achik/dev-atlas/commit/00c4c2366d4edbeaae5687841be82fb8385fb35d))
+* temporarily exclude website to unblock release pipeline ([ffc4744](https://github.com/abdul-hamid-achik/dev-atlas/commit/ffc47444839622ffa8f73f919b34eb933e850ba2))
+* use npm install instead of npm ci in workflow ([8360cda](https://github.com/abdul-hamid-achik/dev-atlas/commit/8360cdac9fd57ef9390ae7e6fe0949511f5bcb48))
+
+
+### Features
+
+* Add local-first AI embedding with Ollama + VS Code vector search ([163a846](https://github.com/abdul-hamid-achik/dev-atlas/commit/163a846f199cf067466c4d09abc2694cec716079))
+* Add vector search and smart merging to MCP knowledge graph ([2084693](https://github.com/abdul-hamid-achik/dev-atlas/commit/208469389d5d570a325f0e1038fa4d75d9376989))
+* comprehensive linting fixes and type safety improvements ([06b005e](https://github.com/abdul-hamid-achik/dev-atlas/commit/06b005ed4dab0b807f3f54a5c4f2657f9866d033))
+* implement comprehensive file explorer integration ([da1699d](https://github.com/abdul-hamid-achik/dev-atlas/commit/da1699dd83e1d2b92349d1871f06e8ee8c3678a6))
+* integrate Ollama embedding service into CI workflow and enhance embedding model validation ([7d3bd1a](https://github.com/abdul-hamid-achik/dev-atlas/commit/7d3bd1a65e226395a07b0dafecde93a573cb10f9))
+
+
+### BREAKING CHANGES
+
+* Default provider changed to local Ollama for privacy
+* Database schema updated with embedding columns
+
 # 1.0.0 (2025-09-03)
 
 
