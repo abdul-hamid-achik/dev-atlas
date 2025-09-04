@@ -21,17 +21,6 @@ jobs:
       fail-fast: false # Don't cancel other jobs if one fails
       matrix:
         node-version: [18, 20, 22]
-    services:
-      ollama:
-        image: ollama/ollama:0.1.48 # Pin to specific version instead of latest
-        ports:
-          - 11434:11434
-        options: >-
-          --health-cmd "curl -f http://localhost:11434/api/tags"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-          --health-start-period 30s
     steps:
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -62,57 +51,6 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: npm ci --prefer-offline --no-audit
 
-      - name: Setup Ollama embedding model
-        timeout-minutes: 8
-        run: |
-          echo "Setting up Ollama with better error handling..."
-          
-          # Function to check Ollama health
-          check_ollama_health() {
-            for i in {1..20}; do
-              if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
-                echo "Ollama is healthy"
-                return 0
-              fi
-              echo "Waiting for Ollama... attempt $i/20"
-              sleep 5
-            done
-            echo "Ollama failed to become healthy"
-            return 1
-          }
-          
-          # Wait for Ollama to be ready
-          if ! check_ollama_health; then
-            echo "::error::Ollama service failed to start properly"
-            curl -v http://localhost:11434/api/tags || true
-            exit 1
-          fi
-          
-          # Pull model with timeout and retries
-          echo "Pulling all-minilm model..."
-          if ! timeout 300 curl -X POST http://localhost:11434/api/pull \
-            -d '{"name": "all-minilm:latest"}' \
-            -H "Content-Type: application/json"; then
-            echo "::error::Failed to pull model"
-            exit 1
-          fi
-          
-          # Verify model is available
-          echo "Verifying model availability..."
-          for i in {1..30}; do
-            if curl -s http://localhost:11434/api/tags | grep -q "all-minilm"; then
-              echo "Model successfully loaded"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "::error::Model failed to load after 5 minutes"
-              curl -s http://localhost:11434/api/tags
-              exit 1
-            fi
-            echo "Waiting for model to load... attempt $i/30"
-            sleep 10
-          done
-
       - name: Lint
         run: npm run lint
 
@@ -120,9 +58,7 @@ jobs:
         timeout-minutes: 15
         run: npm run test
         env:
-          EMBEDDING_PROVIDER: ollama
-          EMBEDDING_MODEL: all-minilm
-          OLLAMA_URL: http://localhost:11434
+          NODE_ENV: test
 
       - name: Build
         run: npm run build

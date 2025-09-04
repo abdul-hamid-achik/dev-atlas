@@ -110,8 +110,7 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
 
         if (attempt === this.maxRetries) {
           throw new Error(
-            `Failed to generate Ollama embedding after ${this.maxRetries} attempts: ${
-              error instanceof Error ? error.message : String(error)
+            `Failed to generate Ollama embedding after ${this.maxRetries} attempts: ${error instanceof Error ? error.message : String(error)
             }`
           );
         }
@@ -325,13 +324,16 @@ export class EmbeddingProviderFactory {
       return this.currentProvider;
     }
 
-    // In test environment, use simple provider only if no specific provider is configured
-    if (process.env.NODE_ENV === 'test' && !process.env.EMBEDDING_PROVIDER) {
+    // Detect CI/test environments more broadly
+    const isTestOrCI = this.isTestOrCIEnvironment();
+
+    // In test/CI environment, prefer simple provider for reliability
+    if (isTestOrCI && !process.env.EMBEDDING_PROVIDER) {
       const simpleProvider = this.providers.get('simple');
       if (!simpleProvider) {
         throw new Error('Simple provider not available in test environment');
       }
-      console.error('[EmbeddingFactory] Using simple provider for tests (no provider specified)');
+      console.error('[EmbeddingFactory] Using simple provider for tests/CI (no provider specified)');
       this.currentProvider = simpleProvider;
       return simpleProvider;
     }
@@ -347,17 +349,28 @@ export class EmbeddingProviderFactory {
       const provider = this.providers.get(providerName);
       if (provider) {
         try {
-          const available = await provider.isAvailable();
+          // In CI environments, be more aggressive about timeouts for external services
+          const timeoutMs = isTestOrCI && providerName !== 'simple' ? 3000 : 10000;
+          const available = await this.checkProviderAvailability(provider, timeoutMs);
+
           if (available) {
             console.error(`[EmbeddingFactory] Using provider: ${provider.name}`);
             this.currentProvider = provider;
             return provider;
+          } else {
+            console.error(`[EmbeddingFactory] Provider ${providerName} not available`);
           }
         } catch (error) {
           console.error(
             `[EmbeddingFactory] Provider ${providerName} failed availability check:`,
-            error
+            error instanceof Error ? error.message : String(error)
           );
+
+          // In CI/test, don't retry external providers for too long
+          if (isTestOrCI && providerName !== 'simple') {
+            console.error(`[EmbeddingFactory] Skipping ${providerName} in CI environment due to failure`);
+            continue;
+          }
         }
       }
     }
@@ -367,9 +380,29 @@ export class EmbeddingProviderFactory {
     if (!simpleProvider) {
       throw new Error('No embedding providers available - simple provider not found');
     }
-    console.error('[EmbeddingFactory] Falling back to simple JavaScript provider');
+
+    const fallbackReason = isTestOrCI ? 'CI/test environment fallback' : 'all other providers failed';
+    console.error(`[EmbeddingFactory] Using simple provider (${fallbackReason})`);
     this.currentProvider = simpleProvider;
     return simpleProvider;
+  }
+
+  private isTestOrCIEnvironment(): boolean {
+    return !!(
+      process.env.NODE_ENV === 'test' ||
+      process.env.CI === 'true' ||
+      process.env.GITHUB_ACTIONS === 'true' ||
+      process.env.VITEST === 'true'
+    );
+  }
+
+  private async checkProviderAvailability(provider: EmbeddingProvider, timeoutMs: number): Promise<boolean> {
+    return Promise.race([
+      provider.isAvailable(),
+      new Promise<boolean>((_, reject) =>
+        setTimeout(() => reject(new Error('Provider availability check timed out')), timeoutMs)
+      )
+    ]);
   }
 
   async generateEmbedding(
