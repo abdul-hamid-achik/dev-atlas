@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
 
       - name: Cache node_modules
         uses: actions/cache@v3
@@ -32,6 +31,7 @@ jobs:
             node_modules
             apps/*/node_modules
             packages/*/node_modules
+            ~/.npm
           key: ${{ runner.os }}-node-22-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-node-22-

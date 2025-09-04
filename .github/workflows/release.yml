@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
 
       - name: Cache node_modules
         uses: actions/cache@v3
@@ -32,6 +31,7 @@ jobs:
             node_modules
             apps/*/node_modules
             packages/*/node_modules
+            ~/.npm
           key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-node-${{ matrix.node-version }}-
@@ -68,7 +68,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Cache node_modules
@@ -78,6 +77,7 @@ jobs:
             node_modules
             apps/*/node_modules
             packages/*/node_modules
+            ~/.npm
           key: ${{ runner.os }}-node-22-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-node-22-
