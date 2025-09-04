@@ -84,4 +84,5 @@ temp/
 out/
 
 # Vercel
-.vercel/
+.vercel/package-lock.json
+package-lock.json
