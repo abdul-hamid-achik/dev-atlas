@@ -17,24 +17,12 @@
   "engines": {
     "vscode": "^1.74.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "icon": "icons/icon-128x128.png",
   "activationEvents": [
-    "onCommand:dev-atlas.openKnowledgeGraph",
-    "onCommand:dev-atlas.createNode",
-    "onCommand:dev-atlas.createEdge",
-    "onCommand:dev-atlas.configureFilePrefix",
-    "onCommand:dev-atlas.searchKnowledgeGraph",
-    "onCommand:dev-atlas.advancedSearch",
-    "onCommand:dev-atlas.vectorSearch",
-    "onCommand:dev-atlas.filterTreeView",
-    "onCommand:dev-atlas.clearTreeFilters",
-    "onCommand:dev-atlas.addToKnowledgeGraph",
-    "onCommand:dev-atlas.createRelationship",
-    "onCommand:dev-atlas.showFileInfo",
-    "onCommand:dev-atlas.scanWorkspace",
-    "onCommand:dev-atlas.startFileWatching",
-    "onCommand:dev-atlas.stopFileWatching"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -339,7 +327,12 @@
           "type": "string",
           "default": "@",
           "description": "Prefix character to add before file paths when copying to clipboard (e.g., '@' for Cursor, '#' for other editors, or empty for no prefix)",
-          "examples": ["@", "#", "", ">"]
+          "examples": [
+            "@",
+            "#",
+            "",
+            ">"
+          ]
         },
         "devAtlas.autoOpenFiles": {
           "type": "boolean",
@@ -348,7 +341,12 @@
         },
         "devAtlas.defaultFileAction": {
           "type": "string",
-          "enum": ["ask", "open", "copy", "both"],
+          "enum": [
+            "ask",
+            "open",
+            "copy",
+            "both"
+          ],
           "default": "ask",
           "description": "Default action when clicking file nodes: ask (prompt user), open (open in editor), copy (copy to clipboard), both (open and copy)"
         }

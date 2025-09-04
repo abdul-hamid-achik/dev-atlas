@@ -231,24 +231,24 @@ export function activate(context: vscode.ExtensionContext) {
   // Workspace Scanning Commands
   const scanWorkspaceCmd = vscode.commands.registerCommand('dev-atlas.scanWorkspace', async () => {
     log('Scan workspace command triggered');
-    
+
     if (!scanner) {
       vscode.window.showErrorMessage('Workspace scanner not available');
       return;
     }
 
     vscode.window.showInformationMessage('Scanning workspace... This may take a moment.');
-    
+
     try {
       const results = await scanner.scanWorkspace();
-      
+
       await provider.refresh();
-      
+
       vscode.window.showInformationMessage(
         `Workspace scan completed: ${results.filesScanned} files scanned, ` +
         `${results.nodesCreated} nodes created, ${results.edgesCreated} edges created`
       );
-      
+
       if (results.errors.length > 0) {
         log(`Scan completed with ${results.errors.length} errors: ${results.errors.join(', ')}`, 'warn');
       }
@@ -260,7 +260,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const startFileWatchingCmd = vscode.commands.registerCommand('dev-atlas.startFileWatching', async () => {
     log('Start file watching command triggered');
-    
+
     if (!fileWatcher) {
       vscode.window.showErrorMessage('File system watcher not available');
       return;
@@ -277,7 +277,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const stopFileWatchingCmd = vscode.commands.registerCommand('dev-atlas.stopFileWatching', () => {
     log('Stop file watching command triggered');
-    
+
     if (!fileWatcher) {
       vscode.window.showErrorMessage('File system watcher not available');
       return;
@@ -358,6 +358,6 @@ export function deactivate() {
   (global as GlobalWithProvider).devAtlasKnowledgeGraphProvider = undefined;
   (global as GlobalWithProvider).devAtlasWorkspaceScanner = undefined;
   (global as GlobalWithProvider).devAtlasFileSystemWatcher = undefined;
-  
+
   console.log('Dev Atlas extension is now deactivated!');
 }

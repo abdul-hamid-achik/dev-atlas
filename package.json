@@ -3,7 +3,10 @@
   "version": "0.2.0",
   "private": true,
   "description": "Dev Atlas - Monorepo with MCP Knowledge Graph and VS Code Extension",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -21,5 +24,8 @@
   "packageManager": "npm@10.0.0",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.2.0"
   }
 }
