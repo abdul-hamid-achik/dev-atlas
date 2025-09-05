@@ -1,0 +1,80 @@
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Development files (but keep src for building)
+*.test.*
+*.spec.*
+tests
+test
+
+# Build and cache directories
+.turbo
+.next
+dist
+build
+
+# Test files
+**/*.test.*
+**/*.spec.*
+tests
+test
+
+# Documentation
+*.md
+docs
+
+# Git
+.git
+.gitignore
+
+# Development configs (keep tsconfig.json for building)
+vitest.config.ts
+.releaserc.json
+
+# OS
+.DS_Store
+Thumbs.db
