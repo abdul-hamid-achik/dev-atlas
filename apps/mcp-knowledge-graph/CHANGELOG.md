@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/abdul-hamid-achik/dev-atlas/compare/v2.0.2...v2.1.0) (2025-09-05)
+
+
+### Features
+
+* add Docker MCP registry support for knowledge graph server ([e5c1653](https://github.com/abdul-hamid-achik/dev-atlas/commit/e5c1653563462998dc418d67436c44fd943c11ea))
+
 ## [2.0.2](https://github.com/abdul-hamid-achik/dev-atlas/compare/v2.0.1...v2.0.2) (2025-09-04)
 
 
